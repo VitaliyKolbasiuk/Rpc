@@ -1,0 +1,17 @@
+[package]
+name = "RustRPC"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.37.0", features = ["full"] }
+
+[[bin]]
+name = "client"
+path = "Client/simple_client.rs"
+
+[[bin]]
+name = "server"
+path = "Server/simple_server.rs"
