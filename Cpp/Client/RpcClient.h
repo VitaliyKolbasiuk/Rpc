@@ -1,10 +1,16 @@
-#ifndef RPCCLIENT_H
-#define RPCCLIENT_H
+#pragma once
 
-class RpcClient
+#include "ClientInterfaces.h"
+
+class TcpClient;
+class RpcClient : public IRpcClient
 {
+
+    std::weak_ptr<TcpClient> m_tcpClient;
 public:
     RpcClient();
-};
 
-#endif // RPCCLIENT_H
+    void setTcpClient(const std::weak_ptr<TcpClient>& tcpClient);
+    void onSocketConnected() override;
+    void closeConnection() override;
+};

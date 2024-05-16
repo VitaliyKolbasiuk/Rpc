@@ -1,49 +1,64 @@
-cmake_minimum_required(VERSION 3.14)
-
-project(CppRustServer LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.12)
+project(YourProjectName)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_PREFIX_PATH "/home/vitaliykolbasiuk/Qt/6.6.0/gcc_64/lib/cmake")
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 
-# add_executable(CppRustServer
-#   main.cpp
-#   SimpleClient.cpp
-#   SimpleServer.cpp
-# )
-add_executable(SimpleServer
-  Server/SimpleServer.cpp
-)
-add_executable(SimpleClient
-  Client/SimpleClient.cpp
-)
+# Include Protocol Buffers
+find_package(Protobuf REQUIRED)
 
-add_executable(ClientExample
-  Client/ClientExample.cpp
-  Client/RpcClient.h
-  Client/RpcClient.cpp
-)
+# Add the directory containing your .proto files
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+# add_executable(SimpleServer
+#         Server/SimpleServer.cpp
+# )
+# add_executable(SimpleClient
+#         Client/SimpleClient.cpp
+# )
+
+ add_executable(ClientExample
+         Client/ClientExample.cpp
+         Client/RpcClient.h
+         Client/RpcClient.cpp
+         Client/ClientInterfaces.h
+         Client/TcpClient.h
+         Client/ClientMain.cpp
+ )
 
 add_executable(ServerExample
-  Server/ServerExample.cpp
-  Server/RpcServer.h
-  Server/RpcServer.cpp
+        Server/ServerMain.cpp
+        Server/ServerExample.cpp
+        Server/RpcServer.h
+        Server/RpcServer.cpp
+        Server/ServerSession.h
+        Server/Interfaces.h
 )
 
-#target_link_libraries(CppRustServer Qt${QT_VERSION_MAJOR}::Core)
-target_link_libraries(SimpleServer Qt${QT_VERSION_MAJOR}::Core)
-target_link_libraries(ServerExample Qt${QT_VERSION_MAJOR}::Core)
-target_link_libraries(SimpleClient Qt${QT_VERSION_MAJOR}::Core)
-target_link_libraries(ClientExample Qt${QT_VERSION_MAJOR}::Core)
+target_link_libraries(ServerExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
+target_link_libraries(ClientExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
+
+protobuf_generate(
+        LANGUAGE cpp  # specify the desired language (e.g., cpp, python)
+        TARGET ServerExample  # specify the target name for the generated code
+        PROTOS Protobuf/AddressBook.proto  # specify your .proto file(s)
+        #OUT_VAR Protobuf # specify the variable to store the generated source files
+)
+
 
 include(GNUInstallDirs)
-install(TARGETS SimpleServer SimpleClient ClientExample ServerExample
+install(TARGETS ServerExample
+    # install(TARGETS SimpleServer SimpleClient ClientExample ServerExample
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
