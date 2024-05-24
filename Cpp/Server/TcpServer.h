@@ -9,16 +9,17 @@
 using namespace boost::asio;
 using ip::tcp;
 
-class RpcServer : public IServer, public std::enable_shared_from_this<RpcServer>
+class TcpServer : public IServer, public std::enable_shared_from_this<TcpServer>
 {
-   io_context&        m_ioContext;
-   tcp::socket           m_socket;
-   tcp::acceptor m_acceptor;
+    IRpcModel&    m_rpcModel;
+    io_context&   m_ioContext;
+    tcp::socket   m_socket;
+    tcp::acceptor m_acceptor;
 
     std::vector<std::shared_ptr<ServerSession>> m_sessions;
 
 public:
-    RpcServer(boost::asio::io_context& ioContext, int port);
+    TcpServer(boost::asio::io_context& ioContext, IRpcModel& rpcModel, int port);
 
     void execute() override;
     void accept();

@@ -1,5 +1,19 @@
 syntax = "proto3";
 
-message HelloWorld {
-  string message = 1;
+// sin cos + - / *
+
+message Arguments2
+{
+  double arg1 = 1;
+  double arg2 = 2;
+}
+
+message Result
+{
+  double value = 1;
+}
+
+message FailResult
+{
+  string error_message = 1;
 }

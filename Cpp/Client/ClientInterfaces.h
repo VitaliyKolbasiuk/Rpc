@@ -1,9 +1,9 @@
 #pragma once
 
-class IRpcClient
+class ITcpClient
 {
 public:
-    virtual ~IRpcClient() = default;
+    virtual ~ITcpClient() = default;
 
 public:
     virtual void onSocketConnected() = 0;

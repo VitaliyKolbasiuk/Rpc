@@ -20,12 +20,13 @@ find_package(Protobuf REQUIRED)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-# add_executable(SimpleServer
-#         Server/SimpleServer.cpp
-# )
-# add_executable(SimpleClient
-#         Client/SimpleClient.cpp
-# )
+ add_executable(SimpleServer
+         Server/SimpleServer.cpp
+ )
+
+ add_executable(SimpleClient
+         Client/SimpleClient.cpp
+ )
 
  add_executable(ClientExample
          Client/ClientExample.cpp
@@ -34,15 +35,17 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
          Client/ClientInterfaces.h
          Client/TcpClient.h
          Client/ClientMain.cpp
+         Operations.h
  )
 
 add_executable(ServerExample
         Server/ServerMain.cpp
         Server/ServerExample.cpp
-        Server/RpcServer.h
-        Server/RpcServer.cpp
+        Server/TcpServer.h
+        Server/TcpServer.cpp
         Server/ServerSession.h
         Server/Interfaces.h
+        Server/RpcModel.h
 )
 
 target_link_libraries(ServerExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
