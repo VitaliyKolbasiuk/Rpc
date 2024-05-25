@@ -10,8 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_PREFIX_PATH "/home/vitaliykolbasiuk/Qt/6.6.0/gcc_64/lib/cmake")
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
+#find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
+#find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 
 # Include Protocol Buffers
 find_package(Protobuf REQUIRED)
@@ -48,8 +48,8 @@ add_executable(ServerExample
         Server/RpcModel.h
 )
 
-target_link_libraries(ServerExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
-target_link_libraries(ClientExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
+#target_link_libraries(ServerExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
+#target_link_libraries(ClientExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
 
 protobuf_generate(
         LANGUAGE cpp  # specify the desired language (e.g., cpp, python)
