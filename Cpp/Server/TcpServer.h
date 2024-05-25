@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../cmake-build-debug/Protobuf/AddressBook.pb.h"
+#include "Protobuf/AddressBook.pb.h"
 #include "Interfaces.h"
 
 #include <memory>

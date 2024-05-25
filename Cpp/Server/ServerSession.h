@@ -3,7 +3,7 @@
 #include "Interfaces.h"
 #include "../Operations.h"
 
-#include <QDebug>
+#include <iostream>
 #include <boost/asio.hpp>
 #include <map>
 
@@ -26,19 +26,19 @@ public:
     {
         if (auto tcpServerPtr = m_tcpServer.lock(); tcpServerPtr)
         {
-            qDebug() << "TcpServer lock";
+            std::cout << "TcpServer lock" << std::endl;
         }
         //async_read( m_socket );
     }
 
-    ~ServerSession() { qCritical() << "!!!! ~ClientSession()"; }
+    ~ServerSession() { std::cout << "!!!! ~ClientSession()" << std::endl; }
 
     void readPacket()
     {
         uint32_t operation;
         boost::asio::read(m_socket, boost::asio::buffer(&operation, sizeof(operation)));
 
-        qDebug() << "Operation: " << operation;
+        std::cout << "Operation: " << operation << std::endl;
 
         // Read arguments
         uint32_t packetSize = 0;
@@ -46,7 +46,7 @@ public:
 
         if (packetSize == 0)
         {
-            qDebug() << "Bad packet";
+            std::cerr << "Bad packet" << std::endl;
             return;
         }
 
@@ -56,13 +56,15 @@ public:
         Arguments2 arguments2;
         if (!arguments2.ParseFromArray(bufferArguments, packetSize))
         {
-            qDebug() << "Failed to parse protobuf";
+            std::cerr << "Failed to parse protobuf" << std::endl;
             return;
         }
 
-        qDebug() << "Arguments: " << arguments2.arg1() << arguments2.arg2();
+        std::cout << "Arguments: " << arguments2.arg1() << arguments2.arg2() << std::endl;
 
         m_rpcModel.calculate(operation, arguments2.arg1(), arguments2.arg2(), weak_from_this());
+
+        readPacket();
     }
 
     void sendEnum(const uint32_t result)
@@ -75,7 +77,7 @@ public:
         std::string buffer;
         if (!messageLite.SerializeToString(&buffer))
         {
-            qDebug() << "Failed to parse protobuf";
+            std::cerr << "Failed to parse protobuf" << std::endl;
         }
 
         sendPacket(buffer);

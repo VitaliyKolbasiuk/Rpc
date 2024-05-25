@@ -3,7 +3,6 @@
 
 #include <memory>
 #include <boost/asio.hpp>
-#include <QDebug>
 
 int main()
 {
@@ -17,7 +16,7 @@ int main()
     std::thread ([&ioContext]{
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> workGuard(ioContext.get_executor());
         ioContext.run();
-        qDebug() << "Context has stopped";
+        std::cout << "Context has stopped" << std::endl;
     }).detach();
 
     int a;

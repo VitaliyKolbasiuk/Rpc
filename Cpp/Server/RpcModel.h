@@ -5,8 +5,6 @@
 #include "Operations.h"
 #include "ServerSession.h"
 
-#include <QDebug>
-
 class RpcModel : public IRpcModel
 {
 
@@ -52,7 +50,7 @@ class RpcModel : public IRpcModel
 
             if (successOrFail == Results::success)
             {
-                qDebug() << "Send " << result.value();
+                std::cout << "Send " << result.value() << std::endl;
                 ptr->sendProtobuf(result);
             }
             else

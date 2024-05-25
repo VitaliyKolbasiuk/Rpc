@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.12)
 project(YourProjectName)
 
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
+#set(CMAKE_AUTOUIC ON)
+#set(CMAKE_AUTOMOC ON)
+#set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_PREFIX_PATH "/home/vitaliykolbasiuk/Qt/6.6.0/gcc_64/lib/cmake")
+#set(CMAKE_PREFIX_PATH "/home/vitaliykolbasiuk/Qt/6.6.0/gcc_64/lib/cmake")
 
 #find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core)
 #find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
@@ -57,20 +57,27 @@ add_executable(ClientServerTest
         Client/RpcClient.cpp
         Client/ClientInterfaces.h
         Client/TcpClient.h
-        Client/ClientMain.cpp
-        Server/ServerExample.cpp
         Server/TcpServer.h
         Server/TcpServer.cpp
         Server/ServerSession.h
 )
 
+target_include_directories(ClientServerTest PUBLIC . cmake-build-debug/ Client/ Server/)
 
 #target_link_libraries(ServerExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
 #target_link_libraries(ClientExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
+target_link_libraries(ClientServerTest protobuf::libprotobuf)
+
+#protobuf_generate(
+#        LANGUAGE cpp  # specify the desired language (e.g., cpp, python)
+#        TARGET ServerExample  # specify the target name for the generated code
+#        PROTOS Protobuf/AddressBook.proto  # specify your .proto file(s)
+#        #OUT_VAR Protobuf # specify the variable to store the generated source files
+#)
 
 protobuf_generate(
         LANGUAGE cpp  # specify the desired language (e.g., cpp, python)
-        TARGET ServerExample  # specify the target name for the generated code
+        TARGET ClientServerTest  # specify the target name for the generated code
         PROTOS Protobuf/AddressBook.proto  # specify your .proto file(s)
         #OUT_VAR Protobuf # specify the variable to store the generated source files
 )

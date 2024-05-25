@@ -1,10 +1,8 @@
-#include "../Operations.h"
-#include "../cmake-build-debug/Protobuf/AddressBook.pb.h"
-#include "../cmake-build-debug/Protobuf/AddressBook.pb.cc"
+#include "Protobuf/AddressBook.pb.h"
 #include "RpcClient.h"
 #include "TcpClient.h"
 
-#include <QDebug>
+#include <iostream>
 
 RpcClient::RpcClient()
 {
@@ -18,16 +16,50 @@ void RpcClient::setTcpClient(const std::weak_ptr<TcpClient> &tcpClient)
 
 void RpcClient::onSocketConnected()
 {
-    qDebug() << "Socket connected";
+    std::cout << "Socket connected" << std::endl;
 
+    requestCalculation();
+}
+
+void RpcClient::requestCalculation()
+{
     double result;
-    if (std::string error = calculate(Operations::plus, 5, 10, result); !error.empty())
+
+    std::cout << "Write operation and two numbers" << std::endl;
+    std::string operation;
+    int firstNum, secondNum;
+    std::cin >> operation >> firstNum >> secondNum;
+
+    Operations operations;
+    if (operation == "+")
     {
-        qDebug() << "ERROR " << error;
+        operations = Operations::plus;
+    }
+    else if (operation == "-")
+    {
+        operations = Operations::minus;
+    }
+    else if (operation == "*")
+    {
+        operations = Operations::multiply;
+    }
+    else if (operation == "/")
+    {
+        operations = Operations::divide;
+    }
+    else
+    {
+        requestCalculation();
+    }
+
+    if (std::string error = calculate(operations, firstNum, secondNum, result); !error.empty())
+    {
+        std::cerr << "ERROR " << error << std::endl;
         return;
     }
-    qDebug() << "Received result: " << result;
+    std::cout << "Received result: " << result << std::endl;
 
+    requestCalculation();
 }
 
 void RpcClient::sendProtobufer(const google::protobuf::MessageLite& messageLite)
@@ -35,7 +67,7 @@ void RpcClient::sendProtobufer(const google::protobuf::MessageLite& messageLite)
     std::string buffer;
     if (!messageLite.SerializeToString(&buffer))
     {
-        qDebug() << "Failed to parse protobuf";
+        std::cout << "Failed to parse protobuf";
     }
 
     if (auto ptr = m_tcpClient.lock(); ptr)
@@ -78,7 +110,7 @@ std::string RpcClient::calculate(const Operations operation, const double arg1, 
                     Result result;
                     if (!result.ParseFromArray(buffer, packetSize))
                     {
-                        qDebug() << "Result: Failed to parse protobuf";
+                        std::cout << "Result: Failed to parse protobuf";
                         break;
                     }
                     outResult = result.value();
@@ -89,7 +121,7 @@ std::string RpcClient::calculate(const Operations operation, const double arg1, 
                     FailResult failResult;
                     if (!failResult.ParseFromArray(buffer, packetSize))
                     {
-                        qDebug() << "FailResult: Failed to parse protobuf";
+                        std::cout << "FailResult: Failed to parse protobuf";
                         break;
                     }
                     return failResult.error_message();

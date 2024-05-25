@@ -1,10 +1,8 @@
 #pragma once
 
-#include "../cmake-build-debug/Protobuf/AddressBook.pb.h"
-
+#include <iostream>
 #include "ClientInterfaces.h"
 #include <boost/asio.hpp>
-#include <QDebug>
 #include <utility>
 
 using namespace boost::asio;
@@ -25,23 +23,23 @@ public:
 
     ~TcpClient()
     {
-        qCritical() << "!!!! ~Client(): ";
+        std::cout << "!!!! ~Client(): " << std::endl;
     }
 
     void connect(const std::string& addr, const int& port)
     {
-        qDebug() << "Connect: " << addr << ' ' << port;
+        std::cout << "Connect: " << addr << ' ' << port;
         auto endpoint = tcp::endpoint(ip::address::from_string( addr.c_str()), port);
 
         m_socket.async_connect(endpoint, [this] (const boost::system::error_code& error)
         {
             if ( error )
             {
-                qCritical() <<"Connection error: " << error.message();
+                std::cerr <<"Connection error: " << error.message() << std::endl;
             }
             else
             {
-                qDebug() << "Connection established";
+                std::cout << "Connection established" << std::endl;
                 m_client->onSocketConnected();
             }
         });
@@ -77,7 +75,7 @@ public:
 
         if (packetSize == 0)
         {
-            qDebug() << "Bad packet";
+            std::cerr << "Bad packet" << std::endl;
             return nullptr;
         }
 
