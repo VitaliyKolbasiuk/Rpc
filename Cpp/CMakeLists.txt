@@ -48,6 +48,23 @@ add_executable(ServerExample
         Server/RpcModel.h
 )
 
+add_executable(ClientServerTest
+        clientServerTest.cpp
+        Operations.h
+        Server/Interfaces.h
+        Server/RpcModel.h
+        Client/RpcClient.h
+        Client/RpcClient.cpp
+        Client/ClientInterfaces.h
+        Client/TcpClient.h
+        Client/ClientMain.cpp
+        Server/ServerExample.cpp
+        Server/TcpServer.h
+        Server/TcpServer.cpp
+        Server/ServerSession.h
+)
+
+
 #target_link_libraries(ServerExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
 #target_link_libraries(ClientExample protobuf::libprotobuf Qt${QT_VERSION_MAJOR}::Core)
 
