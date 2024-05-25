@@ -26,21 +26,23 @@ public:
         std::cout << "!!!! ~Client(): " << std::endl;
     }
 
-    void connect(const std::string& addr, const int& port)
+    void connect(const std::string& addr, const int& port, std::promise<bool>& promise)
     {
         std::cout << "Connect: " << addr << ' ' << port;
         auto endpoint = tcp::endpoint(ip::address::from_string( addr.c_str()), port);
 
-        m_socket.async_connect(endpoint, [this] (const boost::system::error_code& error)
+        m_socket.async_connect(endpoint, [this, &promise] (const boost::system::error_code& error)
         {
             if ( error )
             {
                 std::cerr <<"Connection error: " << error.message() << std::endl;
+                promise.set_value(false);
             }
             else
             {
                 std::cout << "Connection established" << std::endl;
                 m_client->onSocketConnected();
+                promise.set_value(true);
             }
         });
     }

@@ -5,7 +5,6 @@
 
 #include <memory>
 
-
 class TcpClient;
 class RpcClient : public ITcpClient
 {
@@ -16,7 +15,7 @@ public:
 
     void setTcpClient(const std::weak_ptr<TcpClient>& tcpClient);
     void onSocketConnected() override;
-    void requestCalculation();
+    //void requestCalculation();
     void sendProtobufer(const google::protobuf::MessageLite& messageLite);
     void closeConnection() override;
     std::string calculate(const Operations operation, const double arg1, const double arg2, double& outResult);
