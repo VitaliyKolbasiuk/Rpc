@@ -1,0 +1,37 @@
+message Request
+{
+  double arg1
+  double arg2
+}
+
+message Response
+{
+  double value
+  string error_message
+}
+
+
+rpc_call Result plus( Request )
+rpc_call Result minus( Request )
+
+///////////////////////////////////////////////////
+
+class RpcClientBase
+{
+public:
+    void plus( double arg1, double arg2 );
+    void minus( double arg1, double arg2 );
+
+    void on_plus_result( double value, std::string error_message ) = 0;
+    void on_minus_result( double value, std::string error_message ) = 0;
+};
+
+class RpcServerBase
+{
+public:
+    void on_plus( double value, std::string error_message ) = 0;
+    void on_minus( double value, std::string error_message ) = 0;
+
+    void send_plus_response( double value, std::string error_message );
+    void send_minus_response( double value, std::string error_message );
+}
