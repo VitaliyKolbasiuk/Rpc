@@ -16,7 +16,15 @@ rpc_call Result minus( Request )
 
 ///////////////////////////////////////////////////
 
-class RpcClientBase
+namespace modern_rpc {
+
+enum ModernRpcFuction: uint32_t
+{
+    plus,
+    minus
+};
+
+class ModernRpcClientBase
 {
 public:
     void plus( double arg1, double arg2 );
@@ -26,7 +34,7 @@ public:
     void on_minus_result( double value, std::string error_message ) = 0;
 };
 
-class RpcServerBase
+class ModernRpcServerBase
 {
 public:
     void on_plus( double value, std::string error_message ) = 0;
