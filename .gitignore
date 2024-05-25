@@ -1,0 +1,7 @@
+.idea
+
+cmake-build-*/
+/build/
+/_build/
+/_bin/
+
