@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(YourProjectName)
+project(Rpc)
 
 #set(CMAKE_AUTOUIC ON)
 #set(CMAKE_AUTOMOC ON)
@@ -41,7 +41,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_executable(ServerExample
         Server/ServerMain.cpp
         Server/ServerExample.cpp
-        Server/TcpServer.h
+        Server/ModernRpcTcpServer.h
         Server/TcpServer.cpp
         Server/ServerSession.h
         Server/Interfaces.h
@@ -57,9 +57,29 @@ add_executable(ClientServerTest
         Client/RpcClient.cpp
         Client/ClientInterfaces.h
         Client/TcpClient.h
-        Server/TcpServer.h
+        Server/ModernRpcTcpServer.h
         Server/TcpServer.cpp
         Server/ServerSession.h
+        ModernRpc.h
+)
+
+add_executable(exampleModernRpcClient
+        ModernRpc.h
+        Client/exampleModernClient.cpp
+        Client/TcpClient.h
+        Client/RpcClient.cpp
+        Client/RpcClient.h
+        Client/ClientInterfaces.h
+)
+
+add_executable(exampleModernRpcServer
+        ModernRpc.h
+        Server/exampleModernServer.cpp
+        Server/TcpServer.cpp
+        Server/ModernRpcTcpServer.h
+        Server/ServerSession.h
+        Server/Interfaces.h
+        Server/RpcModel.h
 )
 
 target_include_directories(ClientServerTest PUBLIC . cmake-build-debug/ Client/ Server/)

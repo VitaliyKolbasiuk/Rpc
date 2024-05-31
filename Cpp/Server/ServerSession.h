@@ -10,28 +10,20 @@
 
 class ServerSession : public std::enable_shared_from_this<ServerSession>
 {
-    boost::asio::io_context& m_ioContext;
     boost::asio::streambuf   m_streambuf;
-    std::weak_ptr<IServer>   m_tcpServer;
-    IRpcModel&               m_rpcModel;
 
 public:
-    boost::asio::ip::tcp::socket              m_socket;
+    boost::asio::io_context      m_ioContextUnused;
+    boost::asio::ip::tcp::socket m_socket;
 
-    ServerSession(boost::asio::io_context& ioContext, boost::asio::ip::tcp::socket&& socket, IRpcModel& rpcModel, std::weak_ptr<IServer> tcpServer)
-            : m_ioContext(ioContext),
-              m_rpcModel(rpcModel),
-              m_tcpServer(tcpServer),
-              m_socket(std::move(socket))
-    {
-        if (auto tcpServerPtr = m_tcpServer.lock(); tcpServerPtr)
-        {
-            std::cout << "TcpServer lock" << std::endl;
-        }
-        //async_read( m_socket );
-    }
+    ServerSession() : m_ioContextUnused(), m_socket(m_ioContextUnused) {}
 
     ~ServerSession() { std::cout << "!!!! ~ClientSession()" << std::endl; }
+
+    void moveSocket(boost::asio::ip::tcp::socket&& socket)
+    {
+        m_socket = std::move(socket);
+    }
 
     void readPacket()
     {
@@ -62,7 +54,7 @@ public:
 
         std::cout << "Arguments: " << arguments2.arg1() << arguments2.arg2() << std::endl;
 
-        m_rpcModel.calculate(operation, arguments2.arg1(), arguments2.arg2(), weak_from_this());
+        //m_rpcModel.calculate(operation, arguments2.arg1(), arguments2.arg2(), weak_from_this());
 
         readPacket();
     }

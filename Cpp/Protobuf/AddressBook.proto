@@ -2,18 +2,31 @@ syntax = "proto3";
 
 // sin cos + - / *
 
-message Arguments2
+
+message Request
 {
   double arg1 = 1;
   double arg2 = 2;
 }
 
-message Result
+message Response
 {
   double value = 1;
+  string error_message = 2;
 }
 
-message FailResult
-{
-  string error_message = 1;
-}
+//message Arguments2
+//{
+//  double arg1 = 1;
+//  double arg2 = 2;
+//}
+//
+//message Result
+//{
+//  double value = 1;
+//}
+//
+//message FailResult
+//{
+//  string error_message = 1;
+//}

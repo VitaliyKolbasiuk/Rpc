@@ -1,6 +1,5 @@
 #pragma once
 
-
 class ServerSession;
 
 class IServer
@@ -8,7 +7,7 @@ class IServer
 public:
     virtual ~IServer() = default;
 
-    virtual void execute() = 0;
+    virtual void run() = 0;
 };
 
 class IRpcModel

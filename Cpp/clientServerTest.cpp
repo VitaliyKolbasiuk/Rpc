@@ -1,4 +1,4 @@
-#include "Server/TcpServer.h"
+#include "Server/ModernRpcTcpServer.h"
 #include "Server/RpcModel.h"
 
 #include "Client/TcpClient.h"
@@ -13,8 +13,8 @@ int main(int argc, char *argv[])
             boost::asio::io_context io_context;
 
             RpcModel rpcModel;
-            TcpServer server(io_context, rpcModel, 1234);
-            server.execute();
+            ModernRpcTcpServer server(io_context, rpcModel, 1234);
+            server.run();
         });
     serverThread.detach();
 
