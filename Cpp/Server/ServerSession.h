@@ -1,11 +1,12 @@
 #pragma once
 
 #include "Interfaces.h"
-#include "../Operations.h"
+#include "ModernRpcFunction.h"
 
 #include <iostream>
 #include <boost/asio.hpp>
 #include <map>
+
 
 
 class ServerSession : public std::enable_shared_from_this<ServerSession>
@@ -20,6 +21,8 @@ public:
 
     ~ServerSession() { std::cout << "!!!! ~ClientSession()" << std::endl; }
 
+    virtual void onPacketReceived(std::shared_ptr<std::string> packet) = 0;
+
     void moveSocket(boost::asio::ip::tcp::socket&& socket)
     {
         m_socket = std::move(socket);
@@ -27,52 +30,47 @@ public:
 
     void readPacket()
     {
-        uint32_t operation;
-        boost::asio::read(m_socket, boost::asio::buffer(&operation, sizeof(operation)));
-
-        std::cout << "Operation: " << operation << std::endl;
-
-        // Read arguments
-        uint32_t packetSize = 0;
-        boost::asio::read(m_socket, boost::asio::buffer(&packetSize, sizeof(packetSize)));
-
-        if (packetSize == 0)
+        auto packetSize = std::make_shared<uint32_t>(0);
+        boost::asio::async_read(m_socket, boost::asio::buffer(packetSize.get(), sizeof(*packetSize)),
+                                transfer_exactly(sizeof(*packetSize)),
+                                [this, packetSize](const boost::system::error_code& ec, std::size_t bytes_transferred)
         {
-            std::cerr << "Bad packet" << std::endl;
-            return;
-        }
+            std::cout << "Async_read bytes transferred: " << bytes_transferred << std::endl;
 
-        uint8_t* bufferArguments = new uint8_t[packetSize];
-        boost::asio::read(m_socket, boost::asio::buffer(bufferArguments, packetSize));
+            if (ec)
+            {
+                std::cerr << "Read packet error: " << ec.message() << std::endl;
+            }
+            if (*packetSize == 0)
+            {
+                std::cerr << "Bad packet" << std::endl;
+                return;
+            }
 
-        Arguments2 arguments2;
-        if (!arguments2.ParseFromArray(bufferArguments, packetSize))
-        {
-            std::cerr << "Failed to parse protobuf" << std::endl;
-            return;
-        }
+            std::shared_ptr<std::string> packet = std::make_shared<std::string>();
+            packet->resize(*packetSize);
 
-        std::cout << "Arguments: " << arguments2.arg1() << arguments2.arg2() << std::endl;
+            boost::asio::async_read(m_socket, boost::asio::buffer(*packet),
+                                    transfer_exactly(*packetSize),
+                                    [this, packet](const boost::system::error_code& ec, std::size_t bytes_transferred)
+            {
 
-        //m_rpcModel.calculate(operation, arguments2.arg1(), arguments2.arg2(), weak_from_this());
+                std::cout << "Async_read bytes transferred: " << bytes_transferred << std::endl;
 
-        readPacket();
+                if (ec)
+                {
+                    std::cerr << "Read packet error: " << ec.message() << std::endl;
+                }
+
+                onPacketReceived(packet);
+                readPacket();
+            });
+        });
     }
 
     void sendEnum(const uint32_t result)
     {
         boost::asio::write(m_socket, boost::asio::buffer(&result, sizeof(result)));
-    }
-
-    void sendProtobuf(const google::protobuf::MessageLite& messageLite)
-    {
-        std::string buffer;
-        if (!messageLite.SerializeToString(&buffer))
-        {
-            std::cerr << "Failed to parse protobuf" << std::endl;
-        }
-
-        sendPacket(buffer);
     }
 
     void sendPacket(const std::string& buffer)

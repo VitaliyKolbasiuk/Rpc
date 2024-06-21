@@ -1,6 +1,6 @@
 #include "ModernRpcTcpServer.h"
 #include "ServerSession.h"
-#include "ModernRpc.h"
+#include "ModernRpcSessionBase.h"
 
 ModernRpcTcpServer::ModernRpcTcpServer(io_context& ioContext, int port) : m_ioContext(ioContext),
                                                                                                m_socket(m_ioContext),

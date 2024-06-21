@@ -32,17 +32,16 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
          Client/ClientExample.cpp
          Client/RpcClient.h
          Client/RpcClient.cpp
-         Client/ClientInterfaces.h
          Client/TcpClient.h
          Client/ClientMain.cpp
-         Operations.h
+         ModernRpcFunction.h
  )
 
 add_executable(ServerExample
         Server/ServerMain.cpp
         Server/ServerExample.cpp
         Server/ModernRpcTcpServer.h
-        Server/TcpServer.cpp
+        Server/ModernRpcTcpServer.cpp
         Server/ServerSession.h
         Server/Interfaces.h
         Server/RpcModel.h
@@ -50,37 +49,41 @@ add_executable(ServerExample
 
 add_executable(ClientServerTest
         clientServerTest.cpp
-        Operations.h
+        ModernRpcFunction.h
         Server/Interfaces.h
         Server/RpcModel.h
         Client/RpcClient.h
         Client/RpcClient.cpp
-        Client/ClientInterfaces.h
         Client/TcpClient.h
         Server/ModernRpcTcpServer.h
-        Server/TcpServer.cpp
+        Server/ModernRpcTcpServer.cpp
         Server/ServerSession.h
-        ModernRpc.h
+        ModernRpcClientBase.h
 )
 
 add_executable(exampleModernRpcClient
-        ModernRpc.h
+        ModernRpcClientBase.h
         Client/exampleModernClient.cpp
         Client/TcpClient.h
         Client/RpcClient.cpp
         Client/RpcClient.h
-        Client/ClientInterfaces.h
 )
 
 add_executable(exampleModernRpcServer
-        ModernRpc.h
+        ModernRpcClientBase.h
         Server/exampleModernServer.cpp
-        Server/TcpServer.cpp
+        Server/ModernRpcTcpServer.cpp
         Server/ModernRpcTcpServer.h
         Server/ServerSession.h
         Server/Interfaces.h
         Server/RpcModel.h
+        ModernRpcSessionBase.h
 )
+
+add_executable(GenerateCode
+        Generator.cpp
+)
+
 
 target_include_directories(ClientServerTest PUBLIC . cmake-build-debug/ Client/ Server/)
 
