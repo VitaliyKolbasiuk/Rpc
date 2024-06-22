@@ -1,20 +1,23 @@
 #pragma once
 
-#include "ModernRpcFunction.h"
-#include "ModernRpcClientBase.h"
+#include "EasyRpcFunction.h"
+#include "EasyRpcClientBase.h"
 
 #include <memory>
 
 class TcpClient;
-class RpcClient : public ModernRpcClientBase
+class RpcClient : public EasyRpcClientBase
 {
-//    std::weak_ptr<TcpClient> m_tcpClient;
+    std::thread m_ioContextThread;
+    boost::system::error_code m_connectionError;
 public:
-    RpcClient(boost::asio::io_context& context);
+    RpcClient();
 
-//    void setTcpClient(const std::weak_ptr<TcpClient>& tcpClient);
+    void start(const std::string& addr, int portNum);
+    boost::system::error_code& connectionError();
+    void wait();
+    void stop();
     void onSocketConnected() override;
-    //void requestCalculation();
     void closeConnection();
 };
 

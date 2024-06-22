@@ -3,7 +3,7 @@
 #include "Interfaces.h"
 #include "Protobuf/AddressBook.pb.h"
 #include "ServerSession.h"
-#include "ModernRpcSessionBase.h"
+#include "EasyRpcSessionBase.h"
 
 class RpcModel : public IRpcModel
 {
@@ -12,12 +12,12 @@ class RpcModel : public IRpcModel
     {
         switch (operation)
         {
-            case ModernRpcFunction::plus:
-                //ModernRpcSessionBase::on_plus(1, arg1, arg2, session);
+            case EasyRpcFunction::plus:
+                //EasyRpcSessionBase::on_plus(1, arg1, arg2, session);
                 break;
 
-            case ModernRpcFunction::minus:
-                //ModernRpcSessionBase::on_minus(1, arg1, arg2, session);
+            case EasyRpcFunction::minus:
+                //EasyRpcSessionBase::on_minus(1, arg1, arg2, session);
                 break;
 
 //            case Operations::multiply:

@@ -9,14 +9,18 @@ using ip::tcp;
 
 class TcpClient
 {
-    io_context&  m_ioContext;
-    tcp::socket m_socket;
+protected:
+    io_context  m_ioContext;
 
+private:
+    tcp::socket m_socket;
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
 public:
 
-    TcpClient(io_context&  ioContext) :
-            m_ioContext(ioContext),
-            m_socket(m_ioContext)
+    TcpClient() :
+            m_ioContext(),
+            m_socket(m_ioContext),
+            m_workGuard(boost::asio::make_work_guard(m_ioContext))
     {}
 
     ~TcpClient()
@@ -27,9 +31,9 @@ public:
     virtual void onPacketReceived(uint8_t* packet, const uint32_t packetSize) = 0;
     virtual void onSocketConnected() {}
 
-    void connect(const std::string& addr, const int& port, std::promise<bool>& promise)
+    void connect(const std::string& addr, const int& port, std::promise<boost::system::error_code>& promise)
     {
-        std::cout << "Connect: " << addr << ' ' << port;
+        std::cout << "Connect: " << addr << ' ' << port << std::endl;
         auto endpoint = tcp::endpoint(ip::address::from_string( addr.c_str()), port);
 
         m_socket.async_connect(endpoint, [this, &promise] (const boost::system::error_code& error)
@@ -37,13 +41,13 @@ public:
             if ( error )
             {
                 std::cerr <<"Connection error: " << error.message() << std::endl;
-                promise.set_value(false);
+                promise.set_value(error);
             }
             else
             {
                 std::cout << "Connection established" << std::endl;
                 onSocketConnected();
-                promise.set_value(true);
+                promise.set_value(error);
                 readPacket();
             }
         });

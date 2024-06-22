@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Interfaces.h"
-#include "ModernRpcFunction.h"
+#include "EasyRpcFunction.h"
 
 #include <iostream>
 #include <boost/asio.hpp>

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <sstream>
+#include <fstream>
 #include <regex>
 
 struct RpcArg {
@@ -123,17 +123,27 @@ std::vector<RPCFunction> parseRPCDefinitions(const std::string& input) {
     return rpcFunctions;
 }
 
-void generateFunctionSignatures(const std::vector<RPCFunction>& rpcFunctions) {
-//    for (const auto& func : rpcFunctions) {
-//        std::cout << func.returnType << " " << func.name << "(";
-//        for (size_t i = 0; i < func.argTypes.size(); ++i) {
-//            std::cout << func.argTypes[i] << " arg" << i + 1;
-//            if (i < func.argTypes.size() - 1) {
-//                std::cout << ", ";
-//            }
-//        }
-//        std::cout << ");\n";
-//    }
+void writeEasyRpcSessionBaseHeaders(std::ofstream& file)
+{
+    file << R"(#include "Server/EasyRpcTcpServer.h"
+#include "Server/ServerSession.h"
+#include "EasyRpcFunction.h"
+
+#include <cstdint>
+#include <string>
+#include <memory>)";
+}
+
+void createEasyRpcSessionBase(const std::vector<RPCFunction>& rpcFunctions)
+{
+    for(const auto& rpcFunction : rpcFunctions)
+    {
+        std::ofstream file("EasyRpcSessionBase.h", std::ios::out);
+        if (file.is_open())
+        {
+
+        }
+    }
 }
 
 int main() {
@@ -144,7 +154,6 @@ int main() {
     )";
 
     std::vector<RPCFunction> rpcFunctions = parseRPCDefinitions(input);
-    generateFunctionSignatures(rpcFunctions);
 
     return 0;
 }

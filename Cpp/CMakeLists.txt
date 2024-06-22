@@ -34,14 +34,14 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
          Client/RpcClient.cpp
          Client/TcpClient.h
          Client/ClientMain.cpp
-         ModernRpcFunction.h
+         EasyRpcFunction.h
  )
 
 add_executable(ServerExample
         Server/ServerMain.cpp
         Server/ServerExample.cpp
-        Server/ModernRpcTcpServer.h
-        Server/ModernRpcTcpServer.cpp
+        Server/EasyRpcTcpServer.h
+        Server/EasyRpcTcpServer.cpp
         Server/ServerSession.h
         Server/Interfaces.h
         Server/RpcModel.h
@@ -49,35 +49,35 @@ add_executable(ServerExample
 
 add_executable(ClientServerTest
         clientServerTest.cpp
-        ModernRpcFunction.h
+        EasyRpcFunction.h
         Server/Interfaces.h
         Server/RpcModel.h
         Client/RpcClient.h
         Client/RpcClient.cpp
         Client/TcpClient.h
-        Server/ModernRpcTcpServer.h
-        Server/ModernRpcTcpServer.cpp
+        Server/EasyRpcTcpServer.h
+        Server/EasyRpcTcpServer.cpp
         Server/ServerSession.h
-        ModernRpcClientBase.h
+        EasyRpcClientBase.h
 )
 
-add_executable(exampleModernRpcClient
-        ModernRpcClientBase.h
-        Client/exampleModernClient.cpp
+add_executable(exampleEasyRpcClient
+        EasyRpcClientBase.h
+        Client/exampleEasyClient.cpp
         Client/TcpClient.h
         Client/RpcClient.cpp
         Client/RpcClient.h
 )
 
-add_executable(exampleModernRpcServer
-        ModernRpcClientBase.h
-        Server/exampleModernServer.cpp
-        Server/ModernRpcTcpServer.cpp
-        Server/ModernRpcTcpServer.h
+add_executable(exampleEasyRpcServer
+        EasyRpcClientBase.h
+        Server/exampleEasyServer.cpp
+        Server/EasyRpcTcpServer.cpp
+        Server/EasyRpcTcpServer.h
         Server/ServerSession.h
         Server/Interfaces.h
         Server/RpcModel.h
-        ModernRpcSessionBase.h
+        EasyRpcSessionBase.h
 )
 
 add_executable(GenerateCode

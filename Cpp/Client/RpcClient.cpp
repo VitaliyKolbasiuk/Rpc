@@ -4,63 +4,43 @@
 
 #include <iostream>
 
-RpcClient::RpcClient(boost::asio::io_context& context) : ModernRpcClientBase(context)
+RpcClient::RpcClient() : EasyRpcClientBase()
 {
 
 }
 
-//void RpcClient::setTcpClient(const std::weak_ptr<TcpClient> &tcpClient)
-//{
-//    //m_tcpClient = tcpClient;
-//}
+void RpcClient::start(const std::string& addr, int portNum)
+{
+    std::promise<boost::system::error_code> promise;
+
+    m_ioContextThread = std::thread([this, addr, portNum, &promise](){
+        connect(addr, portNum, promise);
+        m_ioContext.run();
+    });
+
+    m_connectionError = promise.get_future().get();
+}
+
+void RpcClient::wait()
+{
+    m_ioContextThread.join();
+}
+
+void RpcClient::stop()
+{
+    m_ioContext.stop();
+}
+
+boost::system::error_code& RpcClient::connectionError()
+{
+    return m_connectionError;
+}
 
 void RpcClient::onSocketConnected()
 {
     std::cout << "Socket connected" << std::endl;
-
-    //requestCalculation();
 }
 
-//void RpcClient::requestCalculation()
-//{
-//    double result;
-//
-//    std::cout << "Write operation and two numbers" << std::endl;
-//    std::string operation;
-//    int firstNum, secondNum;
-//    std::cin >> operation >> firstNum >> secondNum;
-//
-//    Operations operations;
-//    if (operation == "+")
-//    {
-//        operations = Operations::plus;
-//    }
-//    else if (operation == "-")
-//    {
-//        operations = Operations::minus;
-//    }
-//    else if (operation == "*")
-//    {
-//        operations = Operations::multiply;
-//    }
-//    else if (operation == "/")
-//    {
-//        operations = Operations::divide;
-//    }
-//    else
-//    {
-//        requestCalculation();
-//    }
-//
-//    if (std::string error = calculate(operations, firstNum, secondNum, result); !error.empty())
-//    {
-//        std::cerr << "ERROR " << error << std::endl;
-//        return;
-//    }
-//    std::cout << "Received result: " << result << std::endl;
-//
-//    requestCalculation();
-//}
 
 
 void RpcClient::closeConnection()
