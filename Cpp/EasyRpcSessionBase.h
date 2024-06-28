@@ -9,16 +9,15 @@
 #include <memory>
 
 
-    class EasyRpcSessionBase : public ServerSession
-    {
+class EasyRpcSessionBase : public ServerSession
+{
+public:
+    virtual ~EasyRpcSessionBase() = default;
 
-    public:
-        virtual ~EasyRpcSessionBase() = default;
-
-        //::generateVirtualFunctions::
-        virtual void on_plus(uint64_t context, double arg1, double arg2) = 0;
-        virtual void on_minus(uint64_t context, double arg1, double arg2) = 0;
-        //::generateVirtualFunctions::end::
+    //::generateVirtualFunctions::
+    virtual void on_plus(uint64_t context, double arg1, double arg2) = 0;
+    virtual void on_minus(uint64_t context, double arg1, double arg2) = 0;
+    //::generateVirtualFunctions::end::
 
     // Virtual
     void onPacketReceived(std::shared_ptr<std::string> packet) override
@@ -144,18 +143,6 @@ private:
     }
     //::generateReadFromPacket::end
 
-    void write(const uint16_t& value, char** ptr)
-    {
-        std::memcpy(*ptr, &value, sizeof(value));
-        *ptr += sizeof(value);
-    }
-
-    void write(const uint64_t& value, char** ptr)
-    {
-        std::memcpy(*ptr, &value, sizeof(value));
-        *ptr += sizeof(value);
-    }
-
     //::generateWrite::
     void write(const double& value, char** ptr)
     {
@@ -164,6 +151,7 @@ private:
     }
     //::generateWrite::end
 
+    //::generateWrite::
     void write(const std::string& str, char** ptr)
     {
         uint16_t length = str.size();
@@ -174,4 +162,5 @@ private:
         std::memcpy(*ptr, str.c_str(), length);
         *ptr += length;
     }
+    //::generateWrite::end
 };
