@@ -149,10 +149,15 @@ private:
         ptr += sizeof(value);
     }
 
-    void readFromPacket(std::string& message, uint8_t*& ptr, const uint32_t bytesLeft) // how to read it?
+    void readFromPacket(std::string& message, uint8_t*& ptr)
     {
-        std::memcpy(&message[0], ptr, bytesLeft);
-        ptr += sizeof(bytesLeft);
+        uint16_t length;
+
+        std::memcpy(&length, ptr, sizeof(length));
+        ptr += sizeof(length);
+
+        std::memcpy(&message[0], ptr, length);
+        ptr += length;
     }
     //::generateReadFromPacket::end::
 

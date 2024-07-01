@@ -162,7 +162,11 @@ void generateVirtualFunctions(std::ostream& file, const std::vector<RPCFunction>
         file << "\tvirtual void on_" << rpcFunction.name << "(uint64_t context, ";
         for (size_t i = 0; i < rpcFunction.argTypes.size(); ++i)
         {
-            // TODO if vector
+            if (rpcFunction.argTypes[i].type == "string" || rpcFunction.argTypes[i].isVector)
+            {
+                file << "std::";
+            }
+
             file << rpcFunction.argTypes[i].type << ' ' << rpcFunction.argTypes[i].name;
             if (i == rpcFunction.argTypes.size() - 1)
             {
@@ -206,7 +210,12 @@ void generateSwitchServer(std::ostream& file, const std::vector<RPCFunction>& rp
         file << "\t\t\tcase EasyRpcFunction::" << rpcFunction.name << ":\n\t\t\t{\n";
         for (const auto& argType : rpcFunction.argTypes)
         {
-            file << "\t\t\t\t" << argType.type << ' ' << argType.name << ";\n";
+            file << "\t\t\t\t";
+            if (argType.type == "string" || argType.isVector)
+            {
+                file << "std::";
+            }
+            file << argType.type << ' ' << argType.name << ";\n";
             file << "\t\t\t\treadFromPacket(" << argType.name << ", &ptr, packetEnd);\n";
         }
         file << "\t\t\t\t" << "on_" << rpcFunction.name << "(context, ";
@@ -241,26 +250,38 @@ void generateResponseFunctions(std::ostream& file, const std::vector<RPCFunction
     for(const auto& rpcFunction : rpcFunctions)
     {
         file << "\tvoid send_" << rpcFunction.name << "_response(const uint64_t context, ";
+        std::vector<std::string> returnTypesString;
         for(size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
         {
-            file << "const " << rpcFunction.returnTypes[i].type << ' ' << rpcFunction.returnTypes[i].name;
+            file << "const ";
+
+            if (rpcFunction.returnTypes[i].type == "string" || rpcFunction.returnTypes[i].isVector)
+            {
+                file << "std::";
+                returnTypesString.emplace_back(rpcFunction.returnTypes[i].name);
+            }
+            file << rpcFunction.returnTypes[i].type << ' ' << rpcFunction.returnTypes[i].name;
             if (i == rpcFunction.returnTypes.size() - 1)
             {
-                file << ")\n\t{\n";
+                file << ")\n\t{";
             }
             else
             {
                 file << ", ";
             }
         }
-        file << "\t\t";
-        file << R"(if (error_message.size() > 0xffff)
+
+        for(const auto& typeString : returnTypesString)
+        {
+            file << "\n\t\tif(" << typeString;
+            file << R"(.size() > 0xffff)
         {
             throw std::runtime_error("Too long string in send_plus_response");
+        })";
         }
-        std::string buffer;
 
-        buffer.resize(sizeof(context) + )";
+        file << "\n\t\tstd::string buffer;";
+        file << "\n\t\tbuffer.resize(sizeof(context) + )";
         for (size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
         {
             if (rpcFunction.returnTypes[i].type == "string")
@@ -338,9 +359,30 @@ void generateReadFromPacket(std::ostream& file, const std::vector<RPCFunction>& 
             {
                 continue;
             }
-            file << "\tvoid readFromPacket(" << argType.type << "& value, char** ptr, const char* packetEnd)\n";
-            file << "\t{\n\t\t";
-            file << R"(if (packetEnd < *ptr + sizeof(value))
+
+            if (argType.type == "string" || argType.isVector)
+            {
+                file << "\tvoid readFromPacket(std::" << argType.type << "& data, char** ptr, const char* packetEnd)\n";
+                file << "\t{\n\t\t";
+                file << "uint16_t length;\n\t\t";
+                file << R"(if (packetEnd < *ptr + sizeof(length))
+    	{
+    		throw std::runtime_error("Buffer too small");
+    	})";
+                file << "\n\t\tstd::memcpy(&length, *ptr, sizeof(length)\n\t\t";
+                file << "*ptr += sizeof(length);\n\t\t";
+                file << R"(if (packetEnd < *ptr + length)
+        {
+            throw std::runtime_error("Buffer too small");
+        })";
+                file << "\n\t\tstd::memcpy(&data[0], *ptr, length);\n\t\t";
+                file << "*ptr += length;";
+            }
+            else
+            {
+                file << "\tvoid readFromPacket(" << argType.type << "& value, char** ptr, const char* packetEnd)\n";
+                file << "\t{\n\t\t";
+                file << R"(if (packetEnd < *ptr + sizeof(value))
         {
             throw std::runtime_error("Buffer too small");
         }
@@ -348,6 +390,7 @@ void generateReadFromPacket(std::ostream& file, const std::vector<RPCFunction>& 
         std::memcpy(&value, *ptr, sizeof(value));
         *ptr += sizeof(value);
     })";
+            }
             file << "\n\n";
             writtenTypes.emplace_back(argType.type);
         }
@@ -484,6 +527,10 @@ void generateMembers(std::ofstream& file, const std::vector<RPCFunction>& rpcFun
         file << "\tstd::map<uint64_t, std::function<void(";
         for(size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
         {
+            if (rpcFunction.returnTypes[i].type == "string" || rpcFunction.returnTypes[i].isVector)
+            {
+                file << "std::";
+            }
             file << rpcFunction.returnTypes[i].type << ' ' << rpcFunction.returnTypes[i].name;
             if (i != rpcFunction.returnTypes.size() - 1)
             {
@@ -574,11 +621,19 @@ void generateFunctions(std::ofstream& file, const std::vector<RPCFunction>& rpcF
         file << "\tvoid " << rpcFunction.name << "(";
         for(const auto& argType : rpcFunction.argTypes)
         {
+            if (argType.type == "string" || argType.isVector)
+            {
+                file << "std::";
+            }
             file << argType.type << ' ' << argType.name << ", ";
         }
         file << "std::function<void(";
         for(size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
         {
+            if (rpcFunction.returnTypes[i].type == "string" || rpcFunction.returnTypes[i].isVector)
+            {
+                file << "std::";
+            }
             file << rpcFunction.returnTypes[i].type << ' ' << rpcFunction.returnTypes[i].name;
             if (i != rpcFunction.returnTypes.size() - 1)
             {
@@ -652,14 +707,24 @@ void generateReadFromPacketClient(std::ofstream& file, const std::vector<RPCFunc
             {
                 continue;
             }
-            file << "\tvoid readFromPacket(" << returnType.type << "& value, uint8_t*& ptr, const uint32_t packetSize)";
-            file << "\n\t{\n";
+
             if (returnType.type == "string" || returnType.isVector)
             {
-                // TODO
+                file << "\tvoid readFromPacket(std::" << returnType.type << "& data, uint8_t*& ptr, const uint32_t packetSize)";
+                file << "\n\t{";
+                file << R"(
+        uint16_t length;
+
+        std::memcpy(&length, ptr, sizeof(length));
+        ptr += sizeof(length);
+
+        std::memcpy(&data[0], ptr, length);
+        ptr += length;)";
             }
             else
             {
+                file << "\tvoid readFromPacket(" << returnType.type << "& value, uint8_t*& ptr, const uint32_t packetSize)";
+                file << "\n\t{\n";
                 file << R"(
         if (ptr + packetSize <= ptr + sizeof(value))
         {
