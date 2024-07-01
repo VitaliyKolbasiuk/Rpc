@@ -10,6 +10,7 @@
 
 class EasyRpcClientBase : public TcpClient
 {
+    //::generateMembers::
     uint64_t m_plus_context = 0;
     std::map<uint64_t, std::function<void(double value, std::string error_message)>> m_plus_map;
     std::mutex m_plus_map_mutex;
@@ -17,6 +18,7 @@ class EasyRpcClientBase : public TcpClient
     uint64_t m_minus_context = 0;
     std::map<uint64_t, std::function<void(double value, std::string error_message)>> m_minus_map;
     std::mutex m_minus_map_mutex;
+    //::generateMembers::end::
 
 public:
     EasyRpcClientBase() {}
@@ -33,6 +35,7 @@ public:
         uint64_t context;
         readFromPacket(context, ptr, packetSize);
 
+        //::generateSwitch::
         switch(operation)
         {
             case EasyRpcFunction::plus:
@@ -60,10 +63,11 @@ public:
                 break;
             }
         }
-
+        //::generateSwitch::end::
         delete packet;
     }
 
+    //::generateFunctions::
     void plus( double arg1, double arg2, std::function<void(double value, std::string error_message)> func )
     {
         {
@@ -107,14 +111,9 @@ public:
 
         sendPacket(buffer);
     }
+    //::generateFunctions::end
 
 private:
-
-    void readFromPacket(std::string& message, uint8_t*& ptr, const uint32_t bytesLeft) // how to read it?
-    {
-        std::memcpy(&message[0], ptr, bytesLeft);
-        ptr += sizeof(bytesLeft);
-    }
 
     void readFromPacket(uint16_t& value, uint8_t*& ptr, const uint32_t packetSize)
     {
@@ -138,6 +137,7 @@ private:
         ptr += sizeof(value);
     }
 
+    //::generateReadFromPacket::
     void readFromPacket(double& value, uint8_t*& ptr, const uint32_t packetSize)
     {
         if (ptr + packetSize <= ptr + sizeof(value))
@@ -148,6 +148,13 @@ private:
         std::memcpy(&value, ptr, sizeof(value));
         ptr += sizeof(value);
     }
+
+    void readFromPacket(std::string& message, uint8_t*& ptr, const uint32_t bytesLeft) // how to read it?
+    {
+        std::memcpy(&message[0], ptr, bytesLeft);
+        ptr += sizeof(bytesLeft);
+    }
+    //::generateReadFromPacket::end::
 
     void write(const uint16_t& value, char** ptr)
     {
@@ -161,10 +168,11 @@ private:
         *ptr += sizeof(value);
     }
 
+    //::generateWrite::
     void write(const double& value, char** ptr)
-    {
-        std::memcpy(*ptr, &value, sizeof(value));
-        *ptr += sizeof(value);
+        {
+            std::memcpy(*ptr, &value, sizeof(value));
+            *ptr += sizeof(value);
     }
 
     void write(const std::string& str, char** ptr)
@@ -177,6 +185,7 @@ private:
         std::memcpy(*ptr, str.c_str(), length);
         *ptr += length;
     }
+    //::generateWrite::end::
 };
 
 //inline void startEasyClient()
