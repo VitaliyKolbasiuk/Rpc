@@ -31,6 +31,10 @@ RpcArg parseArg(const std::string& arg, std::string& outError)
         rpcArg.type = match[1];
         rpcArg.name = match[2];
 
+        if (rpcArg.type.substr(0, 6) == "vector")
+        {
+            rpcArg.isVector = true;
+        }
     }
     return rpcArg;
 }
@@ -184,6 +188,7 @@ void generateVirtualFunctions(std::ostream& file, const std::vector<RPCFunction>
 
 void startGenerateOnPacketReceived(std::ostream& file)
 {
+    file << "\n\t";
     file << R"(// Virtual
     void onPacketReceived(std::shared_ptr<std::string> packet) override
     {
@@ -217,7 +222,7 @@ void generateSwitchServer(std::ostream& file, const std::vector<RPCFunction>& rp
                 file << "std::";
             }
             file << argType.type << ' ' << argType.name << ";\n";
-            file << "\t\t\t\treadFromPacket(" << argType.name << ", &ptr, packetEnd);\n";
+            file << "\t\t\t\treadFromPacket(" << argType.name << ", &ptr, packetEnd);\n\n";
         }
         file << "\t\t\t\t" << "on_" << rpcFunction.name << "(context, ";
         for (size_t i = 0; i < rpcFunction.argTypes.size(); ++i)
@@ -233,13 +238,13 @@ void generateSwitchServer(std::ostream& file, const std::vector<RPCFunction>& rp
                 file << ", ";
             }
         }
-        file << "\t\t\t\t   break;\n\t\t\t}\n";
+        file << "\t\t\t\tbreak;\n\t\t\t}\n";
     }
     file << "\t\t\t";
     file << R"(default:
             {
-                    // Close connection
-                    break;
+                // Close connection
+                break;
             }
         //::generateSwitch::end::
         })";
@@ -349,7 +354,7 @@ void startGeneratingPrivate(std::ofstream& file)
 )";
 }
 
-void generateReadFromPacket(std::ostream& file, const std::vector<RPCFunction>& rpcFunctions)
+void generateReadFromPacketServer(std::ostream& file, const std::vector<RPCFunction>& rpcFunctions)
 {
     std::vector<std::string> writtenTypes;
     for(const auto& rpcFunction : rpcFunctions)
@@ -365,19 +370,21 @@ void generateReadFromPacket(std::ostream& file, const std::vector<RPCFunction>& 
             {
                 file << "\tvoid readFromPacket(std::" << argType.type << "& data, char** ptr, const char* packetEnd)\n";
                 file << "\t{\n\t\t";
-                file << "uint16_t length;\n\t\t";
+                file << "uint16_t length;\n\t\t\n\t\t";
                 file << R"(if (packetEnd < *ptr + sizeof(length))
     	{
     		throw std::runtime_error("Buffer too small");
-    	})";
-                file << "\n\t\tstd::memcpy(&length, *ptr, sizeof(length)\n\t\t";
-                file << "*ptr += sizeof(length);\n\t\t";
+    	}
+)";
+                file << "\n\t\tstd::memcpy(&length, *ptr, sizeof(length));\n\t\t";
+                file << "*ptr += sizeof(length);\n\t\t\n\t\t";
                 file << R"(if (packetEnd < *ptr + length)
         {
             throw std::runtime_error("Buffer too small");
-        })";
+        }
+)";
                 file << "\n\t\tstd::memcpy(&data[0], *ptr, length);\n\t\t";
-                file << "*ptr += length;";
+                file << "*ptr += length;\n\t}";
             }
             else
             {
@@ -499,7 +506,7 @@ void createEasyRpcSessionBase(const std::vector<RPCFunction>& rpcFunctions)
         generateSwitchServer(file, rpcFunctions);
         generateResponseFunctions(file, rpcFunctions);
         startGeneratingPrivate(file);
-        generateReadFromPacket(file, rpcFunctions);
+        generateReadFromPacketServer(file, rpcFunctions);
         startGeneratingWrite(file);
         generateWrite(file, rpcFunctions);
     }
@@ -567,17 +574,13 @@ void generateSwitchClient(std::ofstream& file, const std::vector<RPCFunction>& r
 
         for(const auto& returnType : rpcFunction.returnTypes)
         {
-            file << "\t\t\t\t" << returnType.type << ' ' << returnType.name << ";\n";
-
-            if (returnType.type == "string")
+            file << "\t\t\t\t";
+            if (returnType.type == "string" || returnType.isVector)
             {
-                file << "\t\t\t\tptrdiff_t ptrDiff = ptr - packet;\n";
-                file << "\t\t\t\treadFromPacket(" << returnType.name << ", ptr, packetSize - ptrDiff);\n\n";
+                file << "std::";
             }
-            else
-            {
-                file << "\t\t\t\treadFromPacket(" << returnType.name << ", ptr, packetSize);\n\n";
-            }
+            file << returnType.type << ' ' << returnType.name << ";\n";
+            file << "\t\t\t\treadFromPacket(" << returnType.name << ", ptr, packetSize);\n\n";
         }
 
         file << "\t\t\t\tm_" << rpcFunction.name << "_map[context](";
@@ -716,8 +719,18 @@ void generateReadFromPacketClient(std::ofstream& file, const std::vector<RPCFunc
                 file << R"(
         uint16_t length;
 
+        if (ptr + packetSize <= ptr + sizeof(length))
+        {
+            throw std::runtime_error("Buffer too small");
+        }
+
         std::memcpy(&length, ptr, sizeof(length));
         ptr += sizeof(length);
+
+        if (ptr + packetSize <= ptr + length)
+        {
+            throw std::runtime_error("Buffer too small");
+        }
 
         std::memcpy(&data[0], ptr, length);
         ptr += length;)";

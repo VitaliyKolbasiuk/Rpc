@@ -44,8 +44,7 @@ public:
                 readFromPacket(value, ptr, packetSize);
 
                 std::string error_message;
-                ptrdiff_t ptrDiff = ptr - packet;
-                readFromPacket(error_message, ptr, packetSize - ptrDiff);
+                readFromPacket(error_message, ptr, packetSize);
 
                 m_plus_map[context](value, error_message);
                 break;
@@ -56,8 +55,7 @@ public:
                 readFromPacket(value, ptr, packetSize);
 
                 std::string error_message;
-                ptrdiff_t ptrDiff = ptr - packet;
-                readFromPacket(error_message, ptr, packetSize - ptrDiff);
+                readFromPacket(error_message, ptr, packetSize);
 
                 m_minus_map[context](value, error_message);
                 break;
@@ -149,12 +147,22 @@ private:
         ptr += sizeof(value);
     }
 
-    void readFromPacket(std::string& message, uint8_t*& ptr)
+    void readFromPacket(std::string& message, uint8_t*& ptr, const uint32_t packetSize)
     {
         uint16_t length;
 
+        if (ptr + packetSize <= ptr + sizeof(length))
+        {
+            throw std::runtime_error("Buffer too small");
+        }
+
         std::memcpy(&length, ptr, sizeof(length));
         ptr += sizeof(length);
+
+        if (ptr + packetSize <= ptr + length)
+        {
+            throw std::runtime_error("Buffer too small");
+        }
 
         std::memcpy(&message[0], ptr, length);
         ptr += length;
