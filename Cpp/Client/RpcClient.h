@@ -1,9 +1,6 @@
 #pragma once
 
-#include "EasyRpcFunction.h"
 #include "EasyRpcClientBase.h"
-
-#include <memory>
 
 class TcpClient;
 class RpcClient : public EasyRpcClientBase

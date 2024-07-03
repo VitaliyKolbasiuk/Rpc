@@ -21,7 +21,6 @@ void EasyRpcTcpServer::accept()
         if (!ec)
         {
             std::cout << "Connection established" << socket.remote_endpoint().address().to_string() << ": " << socket.remote_endpoint().port() << std::endl;
-            //auto session = std::make_shared<ServerSession>(m_ioContext, std::move(socket), m_rpcModel, weak_from_this());
             auto session = m_creator();
             m_sessions.push_back(session);
             session->moveSocket(std::move(socket));

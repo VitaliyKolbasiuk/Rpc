@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <boost/asio.hpp>
-#include <utility>
 
 using namespace boost::asio;
 using ip::tcp;
@@ -68,18 +67,6 @@ public:
         boost::asio::write(m_socket, boost::asio::buffer(&packetSize, sizeof(packetSize)));
         boost::asio::write(m_socket, boost::asio::buffer(buffer.c_str(), packetSize));
     }
-
-//    void sendEnum(const uint32_t operation)
-//    {
-//        boost::asio::write(m_socket, boost::asio::buffer(&operation, sizeof(operation)));
-//    }
-//
-//    uint32_t readEnum()
-//    {
-//        uint32_t result;
-//        boost::asio::read(m_socket, boost::asio::buffer(&result, sizeof(result)));
-//        return result;
-//    }
 
     void readPacket()
     {

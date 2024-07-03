@@ -1,11 +1,9 @@
 #pragma once
 
-#include "Interfaces.h"
 #include "EasyRpcFunction.h"
 
 #include <iostream>
 #include <boost/asio.hpp>
-#include <map>
 
 
 

@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-RpcClient::RpcClient() : EasyRpcClientBase()
+RpcClient::RpcClient()
 {
 
 }
