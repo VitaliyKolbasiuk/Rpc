@@ -1,8 +1,5 @@
 #pragma once
 
-#include "Protobuf/AddressBook.pb.h"
-#include "Interfaces.h"
-
 #include <memory>
 #include <boost/asio.hpp>
 
@@ -11,7 +8,7 @@ using ip::tcp;
 
 class EasyRpcSessionBase;
 
-class EasyRpcTcpServer : public IServer, public std::enable_shared_from_this<EasyRpcTcpServer>
+class EasyRpcTcpServer : public std::enable_shared_from_this<EasyRpcTcpServer>
 {
     io_context   m_ioContext;
     tcp::socket   m_socket;
@@ -23,7 +20,7 @@ class EasyRpcTcpServer : public IServer, public std::enable_shared_from_this<Eas
 public:
     EasyRpcTcpServer(int port);
 
-    void run() override;
+    void run();
     void onNewConnection(std::function<std::shared_ptr<EasyRpcSessionBase>()> creator);
 
 private:

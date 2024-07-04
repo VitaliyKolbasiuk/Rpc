@@ -6,6 +6,8 @@
 #include <fstream>
 #include <regex>
 
+#include "EasyRpcFunction.h"
+
 struct RpcArg {
     std::string type;
     bool        isVector = false;
@@ -140,7 +142,9 @@ std::vector<RPCFunction> parseRPCDefinitions(const std::string& input) {
 
 void writeEasyRpcSessionBaseHeaders(std::ofstream& file)
 {
-    file << R"(#include "Server/EasyRpcTcpServer.h"
+    file << R"(#pragma once
+
+#include "Server/EasyRpcTcpServer.h"
 #include "Server/ServerSession.h"
 #include "EasyRpcFunction.h"
 
@@ -182,7 +186,7 @@ void generateVirtualFunctions(std::ostream& file, const std::vector<RPCFunction>
                 file << ", ";
             }
         }
-        file << ";\n";
+        file << " = 0;\n";
     }
 }
 
@@ -196,7 +200,7 @@ void startGenerateOnPacketReceived(std::ostream& file)
         auto* ptr = const_cast<char*>(packet->c_str());
         const char* packetEnd = ptr + packet->size();
 
-        uint16_t operation;
+        EasyRpcFunction operation;
         readFromPacket(operation, &ptr, packetEnd);
 
         uint64_t context;
@@ -243,10 +247,9 @@ void generateSwitchServer(std::ostream& file, const std::vector<RPCFunction>& rp
     file << "\t\t\t";
     file << R"(default:
             {
-                // Close connection
+                closeConnection();
                 break;
             }
-        //::generateSwitch::end::
         })";
     file << "\n\t}\n\n";
 }
@@ -287,7 +290,7 @@ void generateResponseFunctions(std::ostream& file, const std::vector<RPCFunction
         }
 
         file << "\n\t\tstd::string buffer;";
-        file << "\n\t\tbuffer.resize(sizeof(context) + ";
+        file << "\n\t\tbuffer.resize(sizeof(EasyRpcFunctiong) + sizeof(context) + ";
         for (size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
         {
             if (rpcFunction.returnTypes[i].type == "string")
@@ -311,7 +314,7 @@ void generateResponseFunctions(std::ostream& file, const std::vector<RPCFunction
         file << "\t\t";
         file << R"(auto* ptr = const_cast<char*>(buffer.c_str());
 
-        uint16_t operation = EasyRpcFunction::)";
+        EasyRpcFunction operation = EasyRpcFunction::)";
         file << rpcFunction.name << ";\n\t\t";
         file << R"(write(operation, &ptr);
         write(context, &ptr);
@@ -329,26 +332,26 @@ void generateResponseFunctions(std::ostream& file, const std::vector<RPCFunction
 void startGeneratingPrivate(std::ofstream& file)
 {
     file << R"(private:
-    void readFromPacket(uint16_t& value, char** ptr, const char* packetEnd)
+    void readFromPacket(EasyRpcFunction& operation, char** ptr, const char* packetEnd)
     {
-        if (packetEnd <= *ptr + sizeof(value))
+        if (packetEnd <= *ptr + sizeof(operation))
         {
             throw std::runtime_error("Buffer too small");
         }
 
-        std::memcpy(&value, *ptr, sizeof(value));
-        *ptr += sizeof(value);
+        std::memcpy(&operation, *ptr, sizeof(operation));
+        *ptr += sizeof(operation);
     }
 
-    void readFromPacket(uint64_t& value, char** ptr, const char* packetEnd)
+    void readFromPacket(uint64_t& context, char** ptr, const char* packetEnd)
     {
-        if (packetEnd <= *ptr + sizeof(value))
+        if (packetEnd <= *ptr + sizeof(context))
         {
             throw std::runtime_error("Buffer too small");
         }
 
-        std::memcpy(&value, *ptr, sizeof(value));
-        *ptr += sizeof(value);
+        std::memcpy(&context, *ptr, sizeof(context));
+        *ptr += sizeof(context);
     }
 
 )";
@@ -408,16 +411,16 @@ void generateReadFromPacketServer(std::ostream& file, const std::vector<RPCFunct
 void startGeneratingWrite(std::ofstream& file)
 {
     file << '\t';;
-    file << R"(void write(const uint16_t& value, char** ptr)
+    file << R"(void write(const EasyRpcFunction& operation, char** ptr)
     {
-        std::memcpy(*ptr, &value, sizeof(value));
-        *ptr += sizeof(value);
+        std::memcpy(*ptr, &operation, sizeof(operation));
+        *ptr += sizeof(operation);
     }
 
-    void write(const uint64_t& value, char** ptr)
+    void write(const uint64_t& context, char** ptr)
     {
-        std::memcpy(*ptr, &value, sizeof(value));
-        *ptr += sizeof(value);
+        std::memcpy(*ptr, &context, sizeof(context));
+        *ptr += sizeof(context);
     })";
     file << "\n\n";
 }
@@ -521,7 +524,6 @@ void writeEasyRpcClientBaseHeaders(std::ofstream& file)
 
 #include <cstdint>
 #include <string>
-#include <memory>
 #include <map>
 )";
     file << '\n';
@@ -570,7 +572,7 @@ void generateSwitchClient(std::ofstream& file, const std::vector<RPCFunction>& r
     file << "\t\tswitch(operation)\n\t\t{\n";
     for(const auto& rpcFunction : rpcFunctions)
     {
-        file << "\t\t\tcaseEasyRpcFunction::" << rpcFunction.name << ":\n\t\t\t{\n";
+        file << "\t\t\tcase EasyRpcFunction::" << rpcFunction.name << ":\n\t\t\t{\n";
 
         for(const auto& returnType : rpcFunction.returnTypes)
         {
@@ -606,7 +608,7 @@ void generateOnPacketReceived(std::ofstream& file, const std::vector<RPCFunction
     {
         uint8_t* ptr = packet;
 
-        uint16_t operation;
+        EasyRpcFunction operation;
         readFromPacket(operation, ptr, packetSize);
 
         uint64_t context;
@@ -615,7 +617,7 @@ void generateOnPacketReceived(std::ofstream& file, const std::vector<RPCFunction
 
     generateSwitchClient(file, rpcFunctions);
 
-    file << "\t\tdelete packet;\n\t}\n\n";
+    file << "\t\tdelete[] packet;\n\t}\n\n";
 }
 
 void generateFunctions(std::ofstream& file, const std::vector<RPCFunction>& rpcFunctions)
@@ -651,7 +653,8 @@ void generateFunctions(std::ofstream& file, const std::vector<RPCFunction>& rpcF
         file << "\t\t\tm_" << rpcFunction.name << "_map[m_" << rpcFunction.name << "_context] = func;\n";
         file << "\t\t}\n\n\t\t";
         file << R"(std::string buffer;
-        enum EasyRpcFunction operation = EasyRpcFunction::minus;)";
+        EasyRpcFunction operation = EasyRpcFunction::)";
+        file << rpcFunction.name << ";";
         file << "\n\n\t\tbuffer.resize(sizeof(operation) + sizeof(m_" << rpcFunction.name << "_context)";
         for (const auto& argType : rpcFunction.argTypes)
         {
@@ -679,26 +682,26 @@ void generateFunctions(std::ofstream& file, const std::vector<RPCFunction>& rpcF
 void generateReadFromPacketClient(std::ofstream& file, const std::vector<RPCFunction>& rpcFunctions)
 {
     file << '\t';
-    file << R"(void readFromPacket(uint16_t& value, uint8_t*& ptr, const uint32_t packetSize)
+    file << R"(void readFromPacket(EasyRpcFunction& operation, uint8_t*& ptr, const uint32_t packetSize)
     {
-        if (ptr + packetSize <= ptr + sizeof(value))
+        if (ptr + packetSize <= ptr + sizeof(operation))
         {
             throw std::runtime_error("Buffer too small");
         }
 
-        std::memcpy(&value, ptr, sizeof(value));
-        ptr += sizeof(value);
+        std::memcpy(&operation, ptr, sizeof(operation));
+        ptr += sizeof(operation);
     }
 
-    void readFromPacket(uint64_t& value, uint8_t*& ptr, const uint32_t packetSize)
+    void readFromPacket(uint64_t& context, uint8_t*& ptr, const uint32_t packetSize)
     {
-        if (ptr + packetSize <= ptr + sizeof(value))
+        if (ptr + packetSize <= ptr + sizeof(context))
         {
             throw std::runtime_error("Buffer too small");
         }
 
-        std::memcpy(&value, ptr, sizeof(value));
-        ptr += sizeof(value);
+        std::memcpy(&context, ptr, sizeof(context));
+        ptr += sizeof(context);
     })";
 
     file << "\n\n";
@@ -864,6 +867,7 @@ public:
 
     virtual void onPacketReceived(uint8_t* packet, const uint32_t packetSize) = 0;
     virtual void onSocketConnected() {}
+    virtual void onConnectionClosed() = 0;
 
     void connect(const std::string& addr, const int& port, std::promise<boost::system::error_code>& promise)
     {
@@ -915,6 +919,14 @@ public:
                 if (ec)
                 {
                     std::cerr << "Read packet error: " << ec.message() << std::endl;
+
+                    if (ec == boost::asio::error::eof || ec == boost::asio::error::connection_reset)
+                    {
+                        std::cerr << "Connection closed by server" << std::endl;
+                        onConnectionClosed();
+                    }
+
+                    return;
                 }
                 if (*packetSize == 0)
                 {
@@ -924,19 +936,43 @@ public:
 
                 uint8_t* packet = new uint8_t[*packetSize];
                 boost::asio::async_read(m_socket, boost::asio::buffer(packet, *packetSize), transfer_exactly(*packetSize),
-                                        [this, packet, packetSize](const boost::system::error_code& ec, std::size_t bytes_transferred)
-                  {
-                      std::cout << "Async_read bytes transferred: " << bytes_transferred << std::endl;
+                    [this, packet, packetSize](const boost::system::error_code& ec, std::size_t bytes_transferred)
+                    {
 
-                      if (ec)
-                      {
-                          std::cerr << "Read packet error: " << ec.message() << std::endl;
-                      }
+                        if (ec)
+                        {
+                            std::cerr << "Read packet error: " << ec.message() << std::endl;
 
-                      onPacketReceived(packet, *packetSize);
-                      readPacket();
-                  });
+                            if (ec == boost::asio::error::eof || ec == boost::asio::error::connection_reset)
+                            {
+                                std::cerr << "Connection closed by server" << std::endl;
+                                onConnectionClosed();
+                            }
+
+                            delete[] packet;
+                            return;
+                        }
+
+                        onPacketReceived(packet, *packetSize);
+                        readPacket();
+                    });
             });
+    }
+
+    void closeConnection()
+    {
+        boost::system::error_code ec;
+        m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        if (ec && ec != boost::asio::error::not_connected)
+        {
+            std::cerr << "Shutdown error: " << ec.message() << std::endl;
+        }
+
+        m_socket.close(ec);
+        if (ec && ec != boost::asio::error::not_connected)
+        {
+            std::cerr << "Close error: " << ec.message() << std::endl;
+        }
     }
 };)";
 }
@@ -953,30 +989,21 @@ class RpcClient : public EasyRpcClientBase
 {
     std::thread m_ioContextThread;
     boost::system::error_code m_connectionError;
-public:
-    RpcClient();
 
+public:
     void start(const std::string& addr, int portNum);
     boost::system::error_code& connectionError();
     void wait();
     void stop();
     void onSocketConnected() override;
-    void closeConnection();
-};
-
-)";
+    void onConnectionClosed() override;
+};)";
 
     std::ofstream rpcClientCpp("Client/RpcClient.cpp", std::ios::out);
-    rpcClientCpp << R"(#include "Protobuf/AddressBook.pb.h"
-#include "RpcClient.h"
+    rpcClientCpp << R"(#include "RpcClient.h"
 #include "TcpClient.h"
 
 #include <iostream>
-
-RpcClient::RpcClient()
-{
-
-}
 
 void RpcClient::start(const std::string& addr, int portNum)
 {
@@ -1010,16 +1037,15 @@ void RpcClient::onSocketConnected()
     std::cout << "Socket connected" << std::endl;
 }
 
-
-
-void RpcClient::closeConnection()
+// Virtual
+void RpcClient::onConnectionClosed()
 {
-
+    std::cerr << "Connection closed";
+    closeConnection();
+    stop();
+})";
 }
 
-
-)";
-}
 void createClientFolder()
 {
     if(std::filesystem::create_directory("Client"))
@@ -1035,11 +1061,8 @@ void createClientFolder()
 
 void createEasyRpcTcpServer()
 {
-    std::ofstream easyRpcTcpServerHeader("Server/RpcClient.h", std::ios::out);
+    std::ofstream easyRpcTcpServerHeader("Server/EasyRpcTcpServer.h", std::ios::out);
     easyRpcTcpServerHeader << R"(#pragma once
-
-#include "Protobuf/AddressBook.pb.h"
-#include "Interfaces.h"
 
 #include <memory>
 #include <boost/asio.hpp>
@@ -1049,7 +1072,7 @@ using ip::tcp;
 
 class EasyRpcSessionBase;
 
-class EasyRpcTcpServer : public IServer, public std::enable_shared_from_this<EasyRpcTcpServer>
+class EasyRpcTcpServer : public std::enable_shared_from_this<EasyRpcTcpServer>
 {
     io_context   m_ioContext;
     tcp::socket   m_socket;
@@ -1061,7 +1084,7 @@ class EasyRpcTcpServer : public IServer, public std::enable_shared_from_this<Eas
 public:
     EasyRpcTcpServer(int port);
 
-    void run() override;
+    void run();
     void onNewConnection(std::function<std::shared_ptr<EasyRpcSessionBase>()> creator);
 
 private:
@@ -1069,7 +1092,7 @@ private:
 };
 )";
 
-    std::ofstream easyRpcTcpServerCpp("Server/RpcClient.cpp", std::ios::out);
+    std::ofstream easyRpcTcpServerCpp("Server/EasyRpcTcpServer.cpp", std::ios::out);
     easyRpcTcpServerCpp << R"(#include "EasyRpcTcpServer.h"
 #include "ServerSession.h"
 #include "EasyRpcSessionBase.h"
@@ -1118,8 +1141,6 @@ void createServerSession()
 
 #include <iostream>
 #include <boost/asio.hpp>
-
-
 
 class ServerSession : public std::enable_shared_from_this<ServerSession>
 {
@@ -1192,8 +1213,23 @@ public:
 
         boost::asio::write(m_socket, boost::asio::buffer(buffer.c_str(), packetSize));
     }
-};
-)DELIMITER";
+
+    void closeConnection()
+    {
+        boost::system::error_code ec;
+        m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        if (ec)
+        {
+            std::cerr << "Shutdown error: " << ec.message() << std::endl;
+        }
+
+        m_socket.close(ec);
+        if (ec)
+        {
+            std::cerr << "Close error: " << ec.message() << std::endl;
+        }
+    }
+};)DELIMITER";
 }
 
 void createServerFolder()

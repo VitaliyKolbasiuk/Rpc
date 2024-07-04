@@ -29,6 +29,7 @@ public:
 
     virtual void onPacketReceived(uint8_t* packet, const uint32_t packetSize) = 0;
     virtual void onSocketConnected() {}
+    virtual void onConnectionClosed() = 0;
 
     void connect(const std::string& addr, const int& port, std::promise<boost::system::error_code>& promise)
     {
@@ -80,6 +81,14 @@ public:
                 if (ec)
                 {
                     std::cerr << "Read packet error: " << ec.message() << std::endl;
+
+                    if (ec == boost::asio::error::eof || ec == boost::asio::error::connection_reset)
+                    {
+                        std::cerr << "Connection closed by server" << std::endl;
+                        onConnectionClosed();
+                    }
+
+                    return;
                 }
                 if (*packetSize == 0)
                 {
@@ -89,18 +98,42 @@ public:
 
                 uint8_t* packet = new uint8_t[*packetSize];
                 boost::asio::async_read(m_socket, boost::asio::buffer(packet, *packetSize), transfer_exactly(*packetSize),
-                                        [this, packet, packetSize](const boost::system::error_code& ec, std::size_t bytes_transferred)
-                  {
-                      std::cout << "Async_read bytes transferred: " << bytes_transferred << std::endl;
+                    [this, packet, packetSize](const boost::system::error_code& ec, std::size_t bytes_transferred)
+                    {
 
-                      if (ec)
-                      {
-                          std::cerr << "Read packet error: " << ec.message() << std::endl;
-                      }
+                        if (ec)
+                        {
+                            std::cerr << "Read packet error: " << ec.message() << std::endl;
 
-                      onPacketReceived(packet, *packetSize);
-                      readPacket();
-                  });
+                            if (ec == boost::asio::error::eof || ec == boost::asio::error::connection_reset)
+                            {
+                                std::cerr << "Connection closed by server" << std::endl;
+                                onConnectionClosed();
+                            }
+
+                            delete[] packet;
+                            return;
+                        }
+
+                        onPacketReceived(packet, *packetSize);
+                        readPacket();
+                    });
             });
+    }
+
+    void closeConnection()
+    {
+        boost::system::error_code ec;
+        m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        if (ec && ec != boost::asio::error::not_connected)
+        {
+            std::cerr << "Shutdown error: " << ec.message() << std::endl;
+        }
+
+        m_socket.close(ec);
+        if (ec && ec != boost::asio::error::not_connected)
+        {
+            std::cerr << "Close error: " << ec.message() << std::endl;
+        }
     }
 };

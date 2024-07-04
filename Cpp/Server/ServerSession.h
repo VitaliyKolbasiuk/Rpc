@@ -5,8 +5,6 @@
 #include <iostream>
 #include <boost/asio.hpp>
 
-
-
 class ServerSession : public std::enable_shared_from_this<ServerSession>
 {
     boost::asio::streambuf   m_streambuf;
@@ -77,5 +75,21 @@ public:
         boost::asio::write(m_socket, boost::asio::buffer(&packetSize, sizeof(packetSize)));
 
         boost::asio::write(m_socket, boost::asio::buffer(buffer.c_str(), packetSize));
+    }
+
+    void closeConnection()
+    {
+        boost::system::error_code ec;
+        m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        if (ec)
+        {
+            std::cerr << "Shutdown error: " << ec.message() << std::endl;
+        }
+
+        m_socket.close(ec);
+        if (ec)
+        {
+            std::cerr << "Close error: " << ec.message() << std::endl;
+        }
     }
 };

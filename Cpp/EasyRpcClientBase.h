@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <string>
-#include <memory>
 #include <map>
 
 class EasyRpcClientBase : public TcpClient
@@ -29,7 +28,7 @@ public:
     {
         uint8_t* ptr = packet;
 
-        uint16_t operation;
+        EasyRpcFunction operation;
         readFromPacket(operation, ptr, packetSize);
 
         uint64_t context;
@@ -62,7 +61,7 @@ public:
             }
         }
         //::generateSwitch::end::
-        delete packet;
+        delete[] packet;
     }
 
     //::generateFunctions::
@@ -76,7 +75,7 @@ public:
         }
 
         std::string buffer;
-        enum EasyRpcFunction operation = EasyRpcFunction::plus;
+        EasyRpcFunction operation = EasyRpcFunction::plus;
 
         buffer.resize(sizeof(operation) + sizeof(m_plus_context) + sizeof(arg1) + sizeof(arg2));
         auto* ptr = const_cast<char*>(buffer.c_str());
@@ -98,7 +97,7 @@ public:
         }
 
         std::string buffer;
-        enum EasyRpcFunction operation = EasyRpcFunction::minus;
+        EasyRpcFunction operation = EasyRpcFunction::minus;
 
         buffer.resize(sizeof(operation) + sizeof(m_minus_context) + sizeof(arg1) + sizeof(arg2));
         auto* ptr = const_cast<char*>(buffer.c_str());
@@ -113,26 +112,26 @@ public:
 
 private:
 
-    void readFromPacket(uint16_t& value, uint8_t*& ptr, const uint32_t packetSize)
+    void readFromPacket(EasyRpcFunction& operation, uint8_t*& ptr, const uint32_t packetSize)
     {
-        if (ptr + packetSize <= ptr + sizeof(value))
+        if (ptr + packetSize <= ptr + sizeof(operation))
         {
             throw std::runtime_error("Buffer too small");
         }
 
-        std::memcpy(&value, ptr, sizeof(value));
-        ptr += sizeof(value);
+        std::memcpy(&operation, ptr, sizeof(operation));
+        ptr += sizeof(operation);
     }
 
-    void readFromPacket(uint64_t& value, uint8_t*& ptr, const uint32_t packetSize)
+    void readFromPacket(uint64_t& context, uint8_t*& ptr, const uint32_t packetSize)
     {
-        if (ptr + packetSize <= ptr + sizeof(value))
+        if (ptr + packetSize <= ptr + sizeof(context))
         {
             throw std::runtime_error("Buffer too small");
         }
 
-        std::memcpy(&value, ptr, sizeof(value));
-        ptr += sizeof(value);
+        std::memcpy(&context, ptr, sizeof(context));
+        ptr += sizeof(context);
     }
 
     //::generateReadFromPacket::
@@ -200,10 +199,3 @@ private:
     }
     //::generateWrite::end::
 };
-
-//inline void startEasyClient()
-//{
-//    boost::asio::io_context ioContext;
-//    TcpClient tcpClient(ioContext, );
-//    tcpServer.run();
-//}

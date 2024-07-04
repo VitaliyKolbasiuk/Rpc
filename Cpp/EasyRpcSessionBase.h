@@ -8,7 +8,6 @@
 #include <string>
 #include <memory>
 
-
 class EasyRpcSessionBase : public ServerSession
 {
 public:
@@ -58,7 +57,7 @@ public:
                 break;
             }
             default:
-                // Close connection
+                closeConnection();
                 break;
         }
         //::generateSwitch::end::
@@ -76,7 +75,7 @@ public:
         buffer.resize(sizeof(context) + sizeof(value) + 2 + error_message.size());
         auto* ptr = const_cast<char*>(buffer.c_str());
 
-        uint16_t operation = EasyRpcFunction::plus;
+        EasyRpcFunction operation = EasyRpcFunction::plus;
         write(operation, &ptr);
         write(context, &ptr);
         write(value, &ptr);
@@ -97,7 +96,7 @@ public:
         buffer.resize(sizeof(context) + sizeof(value) + 2 + error_message.size());
         auto* ptr = const_cast<char*>(buffer.c_str());
 
-        uint16_t operation = EasyRpcFunction::minus;
+        EasyRpcFunction operation = EasyRpcFunction::minus;
         write(operation, &ptr);
         write(context, &ptr);
         write(value, &ptr);
@@ -108,26 +107,26 @@ public:
     //::generateResponseFunction::end::
 
 private:
-    void readFromPacket(uint16_t& value, char** ptr, const char* packetEnd)
+    void readFromPacket(EasyRpcFunction& operation, char** ptr, const char* packetEnd)
     {
-        if (packetEnd <= *ptr + sizeof(value))
+        if (packetEnd <= *ptr + sizeof(operation))
         {
             throw std::runtime_error("Buffer too small");
         }
 
-        std::memcpy(&value, *ptr, sizeof(value));
-        *ptr += sizeof(value);
+        std::memcpy(&operation, *ptr, sizeof(operation));
+        *ptr += sizeof(operation);
     }
 
-    void readFromPacket(uint64_t& value, char** ptr, const char* packetEnd)
+    void readFromPacket(uint64_t& context, char** ptr, const char* packetEnd)
     {
-        if (packetEnd <= *ptr + sizeof(value))
+        if (packetEnd <= *ptr + sizeof(context))
         {
             throw std::runtime_error("Buffer too small");
         }
 
-        std::memcpy(&value, *ptr, sizeof(value));
-        *ptr += sizeof(value);
+        std::memcpy(&context, *ptr, sizeof(context));
+        *ptr += sizeof(context);
     }
 
     //::generateReadFromPacket::
@@ -142,6 +141,18 @@ private:
         *ptr += sizeof(value);
     }
     //::generateReadFromPacket::end
+
+    void write(const uint16_t& value, char** ptr)
+    {
+        std::memcpy(*ptr, &value, sizeof(value));
+        *ptr += sizeof(value);
+    }
+
+    void write(const uint64_t& value, char** ptr)
+    {
+        std::memcpy(*ptr, &value, sizeof(value));
+        *ptr += sizeof(value);
+    }
 
     //::generateWrite::
     void write(const double& value, char** ptr)

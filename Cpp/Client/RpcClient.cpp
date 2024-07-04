@@ -1,13 +1,7 @@
-#include "Protobuf/AddressBook.pb.h"
 #include "RpcClient.h"
 #include "TcpClient.h"
 
 #include <iostream>
-
-RpcClient::RpcClient()
-{
-
-}
 
 void RpcClient::start(const std::string& addr, int portNum)
 {
@@ -41,11 +35,10 @@ void RpcClient::onSocketConnected()
     std::cout << "Socket connected" << std::endl;
 }
 
-
-
-void RpcClient::closeConnection()
+// Virtual
+void RpcClient::onConnectionClosed()
 {
-
+    std::cerr << "Connection closed";
+    closeConnection();
+    stop();
 }
-
-
