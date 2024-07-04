@@ -35,13 +35,6 @@ int main()
         }
     });
 
-    rpcClient.minus(8, 3, [](double value, std::string error_message){
-        if (error_message.empty())
-        {
-            std::cout << "8 - 3 = " << value << std::endl;
-        }
-    });
-
     rpcClient.wait();
 }
 
@@ -58,12 +51,6 @@ public:
     void on_plus(uint64_t context, double arg1, double arg2) override
     {
         send_plus_response( context, arg1 + arg2, "");
-    }
-
-    // virtual
-    void on_minus(uint64_t context, double arg1, double arg2 ) override
-    {
-        send_minus_response(context, arg1 - arg2, "");
     }
 };
 
