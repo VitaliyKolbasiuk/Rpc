@@ -5,37 +5,83 @@
 #include <vector>
 #include <fstream>
 #include <regex>
-
-#include "EasyRpcFunction.h"
+#include <unordered_map>
 
 struct RpcArg {
-    std::string type;
-    bool        isVector = false;
-    std::string name;
+    std::string m_fullType;
+    std::string m_name;
+    bool        m_isTemplate = false;
+    std::string m_typename;
 };
 
 struct RPCFunction {
-    std::vector<RpcArg> returnTypes;
-    std::string         name;
-    std::vector<RpcArg> argTypes;
+    std::vector<RpcArg> m_returnTypes;
+    std::string         m_name;
+    std::vector<RpcArg> m_argTypes;
 };
+
+std::string mapType(const std::string& type)
+{
+    static const std::unordered_map<std::string, std::string> mapTypes = {
+            {"string", "std::string"},
+            {"vector", "std::vector"},
+            {"uint8", "uint8_t"},
+            {"uint16", "uint16_t"},
+            {"uint32", "uint32_t"},
+            {"uint64", "uint64_t"},
+            {"int8", "int8_t"},
+            {"int16", "int16_t"},
+            {"int32", "int32_t"},
+            {"int64", "int64_t"},
+            {"short", "short"},
+            {"int", "int"},
+            {"long", "long"},
+            {"long long", "long long"},
+            {"float", "float"},
+            {"double", "double"}
+        };
+
+    if (auto it = mapTypes.find(type); it != mapTypes.end())
+    {
+        return it->second;
+    }
+    return type;
+}
+
+void parseTemplateType(const std::string& type, RpcArg& rpcArg, std::string& outError) {
+    std::regex templateRegex(R"((\w+)\<(.+)\>)");
+    std::smatch match;
+
+    if (std::regex_match(type, match, templateRegex))
+    {
+        rpcArg.m_isTemplate = true;
+        rpcArg.m_fullType = mapType(match[1].str()) + '<' + mapType(match[2].str()) + '>';
+        rpcArg.m_typename = mapType(match[2]);
+    }
+    else
+    {
+        outError = "Invalid template type: " + rpcArg.m_fullType;
+    }
+}
 
 RpcArg parseArg(const std::string& arg, std::string& outError)
 {
     RpcArg rpcArg;
-
     std::regex rpcRegex(R"(\s*([\w\<\>]+)\s*(\w+)?)");
     std::smatch match;
     std::string::const_iterator searchArg(arg.cbegin());
 
     std::regex_search(searchArg, arg.cend(), match, rpcRegex);
     {
-        rpcArg.type = match[1];
-        rpcArg.name = match[2];
+        rpcArg.m_name = match[2];
 
-        if (rpcArg.type.substr(0, 6) == "vector")
+        if (match[1].str().find('<') !=  std::string::npos)
         {
-            rpcArg.isVector = true;
+            parseTemplateType(match[1], rpcArg, outError);
+        }
+        else
+        {
+            rpcArg.m_fullType = mapType(match[1]);
         }
     }
     return rpcArg;
@@ -77,28 +123,28 @@ std::vector<RpcArg> parseRpcArg( const std::string& expr, std::string& outError 
 void rpcFuncDump(RPCFunction& rpcFunction)
 {
     std::cout << "(";
-    for(size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
+    for(size_t i = 0; i < rpcFunction.m_returnTypes.size(); ++i)
     {
-        if (i == rpcFunction.returnTypes.size() - 1)
+        if (i == rpcFunction.m_returnTypes.size() - 1)
         {
-            std::cout << rpcFunction.returnTypes[i].type << ' ' << rpcFunction.returnTypes[i].name;
+            std::cout << rpcFunction.m_returnTypes[i].m_fullType << ' ' << rpcFunction.m_returnTypes[i].m_name;
         }
         else
         {
-            std::cout << rpcFunction.returnTypes[i].type << ' ' << rpcFunction.returnTypes[i].name << ", ";
+            std::cout << rpcFunction.m_returnTypes[i].m_fullType << ' ' << rpcFunction.m_returnTypes[i].m_name << ", ";
         }
     }
-    std::cout << ')' << ' ' << rpcFunction.name << '(';
+    std::cout << ')' << ' ' << rpcFunction.m_name << '(';
 
-    for(size_t i = 0; i < rpcFunction.argTypes.size(); ++i)
+    for(size_t i = 0; i < rpcFunction.m_argTypes.size(); ++i)
     {
-        if (i == rpcFunction.argTypes.size() - 1)
+        if (i == rpcFunction.m_argTypes.size() - 1)
         {
-            std::cout << rpcFunction.argTypes[i].type << ' ' << rpcFunction.argTypes[i].name;
+            std::cout << rpcFunction.m_argTypes[i].m_fullType << ' ' << rpcFunction.m_argTypes[i].m_name;
         }
         else
         {
-            std::cout << rpcFunction.argTypes[i].type << ' ' << rpcFunction.argTypes[i].name << ", ";
+            std::cout << rpcFunction.m_argTypes[i].m_fullType << ' ' << rpcFunction.m_argTypes[i].m_name << ", ";
         }
     }
     std::cout << ')' << std::endl;
@@ -116,20 +162,20 @@ std::vector<RPCFunction> parseRPCDefinitions(const std::string& input) {
 
         std::string outError;
         std::vector<RpcArg> rpcReturnArgList = parseRpcArg(match[1], outError);
-        func.returnTypes = rpcReturnArgList;
-        func.name = match[2];
+        func.m_returnTypes = rpcReturnArgList;
+        func.m_name = match[2];
         int nameIndex = 2;
         for (auto& f : rpcFunctions)
         {
-            if (f.name == func.name)
+            if (f.m_name == func.m_name)
             {
-                func.name = match[2].str() + std::to_string(nameIndex);
+                func.m_name = match[2].str() + std::to_string(nameIndex);
                 nameIndex++;
             }
         }
 
         std::vector<RpcArg> rpcArgList = parseRpcArg(match[3], outError);
-        func.argTypes = rpcArgList;
+        func.m_argTypes = rpcArgList;
 
         rpcFuncDump(func);
 
@@ -168,16 +214,11 @@ void generateVirtualFunctions(std::ostream& file, const std::vector<RPCFunction>
 {
     for (const auto& rpcFunction : rpcFunctions)
     {
-        file << "\tvirtual void on_" << rpcFunction.name << "(uint64_t context, ";
-        for (size_t i = 0; i < rpcFunction.argTypes.size(); ++i)
+        file << "\tvirtual void on_" << rpcFunction.m_name << "(uint64_t context, ";
+        for (size_t i = 0; i < rpcFunction.m_argTypes.size(); ++i)
         {
-            if (rpcFunction.argTypes[i].type == "string" || rpcFunction.argTypes[i].isVector)
-            {
-                file << "std::";
-            }
-
-            file << rpcFunction.argTypes[i].type << ' ' << rpcFunction.argTypes[i].name;
-            if (i == rpcFunction.argTypes.size() - 1)
+            file << rpcFunction.m_argTypes[i].m_fullType << ' ' << rpcFunction.m_argTypes[i].m_name;
+            if (i == rpcFunction.m_argTypes.size() - 1)
             {
                 file << ')';
             }
@@ -217,23 +258,18 @@ void generateSwitchServer(std::ostream& file, const std::vector<RPCFunction>& rp
 
     for(const auto& rpcFunction : rpcFunctions)
     {
-        file << "\t\t\tcase EasyRpcFunction::" << rpcFunction.name << ":\n\t\t\t{\n";
-        for (const auto& argType : rpcFunction.argTypes)
+        file << "\t\t\tcase EasyRpcFunction::" << rpcFunction.m_name << ":\n\t\t\t{\n";
+        for (const auto& argType : rpcFunction.m_argTypes)
         {
-            file << "\t\t\t\t";
-            if (argType.type == "string" || argType.isVector)
-            {
-                file << "std::";
-            }
-            file << argType.type << ' ' << argType.name << ";\n";
-            file << "\t\t\t\treadFromPacket(" << argType.name << ", &ptr, packetEnd);\n\n";
+            file << "\t\t\t\t" << argType.m_fullType << ' ' << argType.m_name << ";\n";
+            file << "\t\t\t\treadFromPacket(" << argType.m_name << ", &ptr, packetEnd);\n\n";
         }
-        file << "\t\t\t\t" << "on_" << rpcFunction.name << "(context, ";
-        for (size_t i = 0; i < rpcFunction.argTypes.size(); ++i)
+        file << "\t\t\t\t" << "on_" << rpcFunction.m_name << "(context, ";
+        for (size_t i = 0; i < rpcFunction.m_argTypes.size(); ++i)
         {
-            file << rpcFunction.argTypes[i].name;
+            file << rpcFunction.m_argTypes[i].m_name;
 
-            if (i == rpcFunction.argTypes.size() - 1)
+            if (i == rpcFunction.m_argTypes.size() - 1)
             {
                 file << ");\n";
             }
@@ -258,19 +294,18 @@ void generateResponseFunctions(std::ostream& file, const std::vector<RPCFunction
 {
     for(const auto& rpcFunction : rpcFunctions)
     {
-        file << "\tvoid send_" << rpcFunction.name << "_response(const uint64_t context, ";
-        std::vector<std::string> returnTypesString;
-        for(size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
+        file << "\tvoid send_" << rpcFunction.m_name << "_response(const uint64_t context, ";
+        std::vector<std::string> returnTypes;
+        for(size_t i = 0; i < rpcFunction.m_returnTypes.size(); ++i)
         {
             file << "const ";
 
-            if (rpcFunction.returnTypes[i].type == "string" || rpcFunction.returnTypes[i].isVector)
+            if (rpcFunction.m_returnTypes[i].m_fullType == "std::string" || rpcFunction.m_returnTypes[i].m_isTemplate)
             {
-                file << "std::";
-                returnTypesString.emplace_back(rpcFunction.returnTypes[i].name);
+                returnTypes.emplace_back(rpcFunction.m_returnTypes[i].m_name);
             }
-            file << rpcFunction.returnTypes[i].type << ' ' << rpcFunction.returnTypes[i].name;
-            if (i == rpcFunction.returnTypes.size() - 1)
+            file << rpcFunction.m_returnTypes[i].m_fullType << ' ' << rpcFunction.m_returnTypes[i].m_name;
+            if (i == rpcFunction.m_returnTypes.size() - 1)
             {
                 file << ")\n\t{";
             }
@@ -280,29 +315,33 @@ void generateResponseFunctions(std::ostream& file, const std::vector<RPCFunction
             }
         }
 
-        for(const auto& typeString : returnTypesString)
+        for(const auto& typeString : returnTypes)
         {
             file << "\n\t\tif(" << typeString;
             file << R"(.size() > 0xffff)
         {
-            throw std::runtime_error("Too long string in send_plus_response");
+            throw std::runtime_error("Too long string/vector in send_plus_response");
         })";
         }
 
         file << "\n\t\tstd::string buffer;";
-        file << "\n\t\tbuffer.resize(sizeof(EasyRpcFunctiong) + sizeof(context) + ";
-        for (size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
+        file << "\n\t\tbuffer.resize(sizeof(EasyRpcFunction) + sizeof(context) + ";
+        for (size_t i = 0; i < rpcFunction.m_returnTypes.size(); ++i)
         {
-            if (rpcFunction.returnTypes[i].type == "string")
+            if (rpcFunction.m_returnTypes[i].m_fullType == "std::string")
             {
-                file << "2 + " << rpcFunction.returnTypes[i].name << ".size()";
+                file << "2 + " << rpcFunction.m_returnTypes[i].m_name << ".size()";
+            }
+            else if (rpcFunction.m_returnTypes[i].m_isTemplate)
+            {
+                file << "2 + " << rpcFunction.m_returnTypes[i].m_name << ".size() * sizeof(" << rpcFunction.m_returnTypes[i].m_typename << ")";
             }
             else
             {
-                file << "sizeof(" << rpcFunction.returnTypes[i].name << ")";
+                file << "sizeof(" << rpcFunction.m_returnTypes[i].m_name << ")";
             }
 
-            if (i == rpcFunction.returnTypes.size() - 1)
+            if (i == rpcFunction.m_returnTypes.size() - 1)
             {
                 file << ");\n";
             }
@@ -315,13 +354,13 @@ void generateResponseFunctions(std::ostream& file, const std::vector<RPCFunction
         file << R"(auto* ptr = const_cast<char*>(buffer.c_str());
 
         EasyRpcFunction operation = EasyRpcFunction::)";
-        file << rpcFunction.name << ";\n\t\t";
+        file << rpcFunction.m_name << ";\n\t\t";
         file << R"(write(operation, &ptr);
         write(context, &ptr);
 )";
-        for (const auto& arg : rpcFunction.returnTypes)
+        for (const auto& arg : rpcFunction.m_returnTypes)
         {
-            file << "\t\twrite(" << arg.name << ", &ptr);\n";
+            file << "\t\twrite(" << arg.m_name << ", &ptr);\n";
         }
         file << R"(
         sendPacket(buffer);)";
@@ -360,18 +399,19 @@ void startGeneratingPrivate(std::ofstream& file)
 void generateReadFromPacketServer(std::ostream& file, const std::vector<RPCFunction>& rpcFunctions)
 {
     std::vector<std::string> writtenTypes;
+    writtenTypes.emplace_back("uint64_t");
     for(const auto& rpcFunction : rpcFunctions)
     {
-        for (const auto& argType : rpcFunction.argTypes)
+        for (const auto& argType : rpcFunction.m_argTypes)
         {
-            if (std::find(writtenTypes.begin(), writtenTypes.end(), argType.type) != writtenTypes.end())
+            if (std::find(writtenTypes.begin(), writtenTypes.end(), argType.m_fullType) != writtenTypes.end())
             {
                 continue;
             }
 
-            if (argType.type == "string" || argType.isVector)
+            if (argType.m_fullType == "std::string" || argType.m_isTemplate)
             {
-                file << "\tvoid readFromPacket(std::" << argType.type << "& data, char** ptr, const char* packetEnd)\n";
+                file << "\tvoid readFromPacket(" << argType.m_fullType << "& data, char** ptr, const char* packetEnd)\n";
                 file << "\t{\n\t\t";
                 file << "uint16_t length;\n\t\t\n\t\t";
                 file << R"(if (packetEnd < *ptr + sizeof(length))
@@ -386,12 +426,20 @@ void generateReadFromPacketServer(std::ostream& file, const std::vector<RPCFunct
             throw std::runtime_error("Buffer too small");
         }
 )";
+                if (argType.m_isTemplate)
+                {
+                    file << "\n\t\tdata.resize(length / sizeof(" << argType.m_typename << "));";
+                }
+                else
+                {
+                    file << "\n\t\tdata.resize(length);";
+                }
                 file << "\n\t\tstd::memcpy(&data[0], *ptr, length);\n\t\t";
                 file << "*ptr += length;\n\t}";
             }
             else
             {
-                file << "\tvoid readFromPacket(" << argType.type << "& value, char** ptr, const char* packetEnd)\n";
+                file << "\tvoid readFromPacket(" << argType.m_fullType << "& value, char** ptr, const char* packetEnd)\n";
                 file << "\t{\n\t\t";
                 file << R"(if (packetEnd < *ptr + sizeof(value))
         {
@@ -403,7 +451,7 @@ void generateReadFromPacketServer(std::ostream& file, const std::vector<RPCFunct
     })";
             }
             file << "\n\n";
-            writtenTypes.emplace_back(argType.type);
+            writtenTypes.emplace_back(argType.m_fullType);
         }
     }
 }
@@ -425,45 +473,48 @@ void startGeneratingWrite(std::ofstream& file)
     file << "\n\n";
 }
 
-void generateWrite(std::ofstream& file, const std::vector<RPCFunction>& rpcFunctions)
+void generateWrite(std::ofstream& file, const std::vector<RpcArg>& rpcArgs, std::vector<std::string>& writtenTypes)
 {
-    std::vector<std::string> writtenTypes;
-    for (const auto& rpcFunction : rpcFunctions)
+    writtenTypes.emplace_back("uint64_t");
+    for (const auto& returnType : rpcArgs)
     {
-        for (const auto& returnType : rpcFunction.returnTypes)
+        if (std::find(writtenTypes.begin(), writtenTypes.end(), returnType.m_fullType) != writtenTypes.end())
         {
-            if (std::find(writtenTypes.begin(), writtenTypes.end(), returnType.type) != writtenTypes.end())
+            continue;
+        }
+        if (returnType.m_fullType == "std::string" || returnType.m_isTemplate)
+        {
+            file << "\t";
+            file << "void write(const " << returnType.m_fullType << "& data, char** ptr)\n\t";
+            file << "{\n\t\t";
+            if (returnType.m_isTemplate)
             {
-                continue;
+                file << "uint16_t length = data.size() * sizeof(" << returnType.m_typename << ");";
             }
-            if (returnType.type == "string")
+            else
             {
-                file << "\t";
-                file << R"(void write(const std::string& str, char** ptr)
-    {
-        uint16_t length = str.size();
+                file << "uint16_t length = data.size();";
+            }
+            file <<R"(
 
         std::memcpy(*ptr, &length, sizeof(length));
         *ptr += sizeof(length);
 
-        std::memcpy(*ptr, str.c_str(), length);
+        std::memcpy(*ptr, &data[0], length);
         *ptr += length;
     })";
-            }
-            else
-            {
-                file << "\tvoid write(const " << returnType.type << "& value, char** ptr)\n\t";
-                file << R"({
+        }
+        else
+        {
+            file << "\tvoid write(const " << returnType.m_fullType << " value, char** ptr)\n\t";
+            file << R"({
         std::memcpy(*ptr, &value, sizeof(value));
         *ptr += sizeof(value);
     })";
-            }
-            file << "\n\n";
-            writtenTypes.emplace_back(returnType.type);
         }
+        file << "\n\n";
+        writtenTypes.emplace_back(returnType.m_fullType);
     }
-
-    file << "};";
 }
 
 void createEasyRpcFunction(const std::vector<RPCFunction>& rpcFunctions)
@@ -481,11 +532,11 @@ enum EasyRpcFunction: uint16_t
         file << '\t';
         if(i == 0)
         {
-            file << rpcFunctions[i].name << " = 0";
+            file << rpcFunctions[i].m_name << " = 0";
         }
         else
         {
-            file << rpcFunctions[i].name;
+            file << rpcFunctions[i].m_name;
         }
 
         if (i != rpcFunctions.size() - 1)
@@ -509,9 +560,16 @@ void createEasyRpcSessionBase(const std::vector<RPCFunction>& rpcFunctions)
         generateSwitchServer(file, rpcFunctions);
         generateResponseFunctions(file, rpcFunctions);
         startGeneratingPrivate(file);
+
         generateReadFromPacketServer(file, rpcFunctions);
+
         startGeneratingWrite(file);
-        generateWrite(file, rpcFunctions);
+
+        std::vector<std::string> writtenTypes;
+        for(const auto& rpcFunction : rpcFunctions)
+        {
+            generateWrite(file, rpcFunction.m_returnTypes, writtenTypes);
+        }
     }
 }
 
@@ -533,22 +591,18 @@ void generateMembers(std::ofstream& file, const std::vector<RPCFunction>& rpcFun
 {
     for(const auto& rpcFunction : rpcFunctions)
     {
-        file << "\tuint64_t m_" << rpcFunction.name << "_context = 0;\n";
+        file << "\tuint64_t m_" << rpcFunction.m_name << "_context = 0;\n";
         file << "\tstd::map<uint64_t, std::function<void(";
-        for(size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
+        for(size_t i = 0; i < rpcFunction.m_returnTypes.size(); ++i)
         {
-            if (rpcFunction.returnTypes[i].type == "string" || rpcFunction.returnTypes[i].isVector)
-            {
-                file << "std::";
-            }
-            file << rpcFunction.returnTypes[i].type << ' ' << rpcFunction.returnTypes[i].name;
-            if (i != rpcFunction.returnTypes.size() - 1)
+            file << rpcFunction.m_returnTypes[i].m_fullType << ' ' << rpcFunction.m_returnTypes[i].m_name;
+            if (i != rpcFunction.m_returnTypes.size() - 1)
             {
                 file << ", ";
             }
         }
-        file << ")>> m_" << rpcFunction.name << "_map;\n";
-        file << "\tstd::mutex m_" << rpcFunction.name << "_map_mutex;\n\n";
+        file << ")>> m_" << rpcFunction.m_name << "_map;\n";
+        file << "\tstd::mutex m_" << rpcFunction.m_name << "_map_mutex;\n\n";
     }
 
 }
@@ -572,24 +626,19 @@ void generateSwitchClient(std::ofstream& file, const std::vector<RPCFunction>& r
     file << "\t\tswitch(operation)\n\t\t{\n";
     for(const auto& rpcFunction : rpcFunctions)
     {
-        file << "\t\t\tcase EasyRpcFunction::" << rpcFunction.name << ":\n\t\t\t{\n";
+        file << "\t\t\tcase EasyRpcFunction::" << rpcFunction.m_name << ":\n\t\t\t{\n";
 
-        for(const auto& returnType : rpcFunction.returnTypes)
+        for(const auto& returnType : rpcFunction.m_returnTypes)
         {
-            file << "\t\t\t\t";
-            if (returnType.type == "string" || returnType.isVector)
-            {
-                file << "std::";
-            }
-            file << returnType.type << ' ' << returnType.name << ";\n";
-            file << "\t\t\t\treadFromPacket(" << returnType.name << ", ptr, packetSize);\n\n";
+            file << "\t\t\t\t" << returnType.m_fullType << ' ' << returnType.m_name << ";\n";
+            file << "\t\t\t\treadFromPacket(" << returnType.m_name << ", ptr, packetSize);\n\n";
         }
 
-        file << "\t\t\t\tm_" << rpcFunction.name << "_map[context](";
-        for(size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
+        file << "\t\t\t\tm_" << rpcFunction.m_name << "_map[context](";
+        for(size_t i = 0; i < rpcFunction.m_returnTypes.size(); ++i)
         {
-            file << rpcFunction.returnTypes[i].name;
-            if (i != rpcFunction.returnTypes.size() - 1)
+            file << rpcFunction.m_returnTypes[i].m_name;
+            if (i != rpcFunction.m_returnTypes.size() - 1)
             {
                 file << ", ";
             }
@@ -624,56 +673,52 @@ void generateFunctions(std::ofstream& file, const std::vector<RPCFunction>& rpcF
 {
     for(const auto& rpcFunction : rpcFunctions)
     {
-        file << "\tvoid " << rpcFunction.name << "(";
-        for(const auto& argType : rpcFunction.argTypes)
+        file << "\tvoid " << rpcFunction.m_name << "(";
+        for(const auto& argType : rpcFunction.m_argTypes)
         {
-            if (argType.type == "string" || argType.isVector)
-            {
-                file << "std::";
-            }
-            file << argType.type << ' ' << argType.name << ", ";
+            file << argType.m_fullType << ' ' << argType.m_name << ", ";
         }
         file << "std::function<void(";
-        for(size_t i = 0; i < rpcFunction.returnTypes.size(); ++i)
+        for(size_t i = 0; i < rpcFunction.m_returnTypes.size(); ++i)
         {
-            if (rpcFunction.returnTypes[i].type == "string" || rpcFunction.returnTypes[i].isVector)
-            {
-                file << "std::";
-            }
-            file << rpcFunction.returnTypes[i].type << ' ' << rpcFunction.returnTypes[i].name;
-            if (i != rpcFunction.returnTypes.size() - 1)
+            file << rpcFunction.m_returnTypes[i].m_fullType << ' ' << rpcFunction.m_returnTypes[i].m_name;
+            if (i != rpcFunction.m_returnTypes.size() - 1)
             {
                 file << ", ";
             }
         }
         file << ")> func )\n\t{\n";
         file << "\t\t{\n";
-        file << "\t\t\tstd::lock_guard<std::mutex> lock_guard(m_" << rpcFunction.name << "_map_mutex);\n\n";
-        file << "\t\t\t++m_" << rpcFunction.name << "_context;\n";
-        file << "\t\t\tm_" << rpcFunction.name << "_map[m_" << rpcFunction.name << "_context] = func;\n";
+        file << "\t\t\tstd::lock_guard<std::mutex> lock_guard(m_" << rpcFunction.m_name << "_map_mutex);\n\n";
+        file << "\t\t\t++m_" << rpcFunction.m_name << "_context;\n";
+        file << "\t\t\tm_" << rpcFunction.m_name << "_map[m_" << rpcFunction.m_name << "_context] = func;\n";
         file << "\t\t}\n\n\t\t";
         file << R"(std::string buffer;
         EasyRpcFunction operation = EasyRpcFunction::)";
-        file << rpcFunction.name << ";";
-        file << "\n\n\t\tbuffer.resize(sizeof(operation) + sizeof(m_" << rpcFunction.name << "_context)";
-        for (const auto& argType : rpcFunction.argTypes)
+        file << rpcFunction.m_name << ";";
+        file << "\n\n\t\tbuffer.resize(sizeof(operation) + sizeof(m_" << rpcFunction.m_name << "_context)";
+        for (const auto& argType : rpcFunction.m_argTypes)
         {
-            if (argType.type == "string" || argType.isVector)
+            if (argType.m_fullType == "std::string")
             {
-                file << " + 2 + " << argType.name << ".size()";
+                file << " + 2 + " << argType.m_name << ".size()";
+            }
+            else if (argType.m_isTemplate)
+            {
+                file << " + 2 + " << argType.m_name << ".size() * sizeof(" << argType.m_typename << ")";
             }
             else
             {
-                file << " + sizeof(" << argType.name << ')';
+                file << " + sizeof(" << argType.m_name << ')';
             }
         }
         file << ");\n\t\t";
         file << R"(auto* ptr = const_cast<char*>(buffer.c_str());
         write(operation, &ptr);)";
-        file << "\n\t\twrite(m_" << rpcFunction.name << "_context, &ptr);\n";
-        for (const auto& argType : rpcFunction.argTypes)
+        file << "\n\t\twrite(m_" << rpcFunction.m_name << "_context, &ptr);\n";
+        for (const auto& argType : rpcFunction.m_argTypes)
         {
-            file << "\t\twrite(" << argType.name << ", &ptr);\n";
+            file << "\t\twrite(" << argType.m_name << ", &ptr);\n";
         }
         file << "\n\t\tsendPacket(buffer);\n\t}\n\n";
     }
@@ -706,116 +751,75 @@ void generateReadFromPacketClient(std::ofstream& file, const std::vector<RPCFunc
 
     file << "\n\n";
     std::vector<std::string> writtenTypes;
-    for (const auto& rpcFunction : rpcFunctions)
+    writtenTypes.emplace_back("uint64_t");
+    for(const auto& rpcFunction : rpcFunctions)
     {
-        for(const auto& returnType : rpcFunction.returnTypes)
+        for (const auto& returnType : rpcFunction.m_returnTypes)
         {
-            if (std::find(writtenTypes.begin(), writtenTypes.end(), returnType.type) != writtenTypes.end())
+            if (std::find(writtenTypes.begin(), writtenTypes.end(), returnType.m_fullType) != writtenTypes.end())
             {
                 continue;
             }
 
-            if (returnType.type == "string" || returnType.isVector)
+            if (returnType.m_fullType == "std::string" || returnType.m_isTemplate)
             {
-                file << "\tvoid readFromPacket(std::" << returnType.type << "& data, uint8_t*& ptr, const uint32_t packetSize)";
-                file << "\n\t{";
-                file << R"(
-        uint16_t length;
-
-        if (ptr + packetSize <= ptr + sizeof(length))
+                file << "\tvoid readFromPacket(" << returnType.m_fullType << "& data, uint8_t*& ptr, const uint32_t packetSize)\n";
+                file << "\t{\n\t\t";
+                file << "uint16_t length;\n\t\t\n\t\t";
+                file << R"(if (ptr + packetSize < ptr + sizeof(length))
+    	{
+    		throw std::runtime_error("Buffer too small");
+    	}
+)";
+                file << "\n\t\tstd::memcpy(&length, ptr, sizeof(length));\n\t\t";
+                file << "ptr += sizeof(length);\n\t\t\n\t\t";
+                file << R"(if (ptr + packetSize < ptr + length)
         {
             throw std::runtime_error("Buffer too small");
         }
-
-        std::memcpy(&length, ptr, sizeof(length));
-        ptr += sizeof(length);
-
-        if (ptr + packetSize <= ptr + length)
-        {
-            throw std::runtime_error("Buffer too small");
-        }
-
-        std::memcpy(&data[0], ptr, length);
-        ptr += length;)";
+)";
+                if (returnType.m_isTemplate)
+                {
+                    file << "\n\t\tdata.resize(length / sizeof(" << returnType.m_typename << "));";
+                }
+                else
+                {
+                    file << "\n\t\tdata.resize(length);";
+                }
+                file << "\n\t\tstd::memcpy(&data[0], ptr, length);\n\t\t";
+                file << "ptr += length;\n\t}";
             }
             else
             {
-                file << "\tvoid readFromPacket(" << returnType.type << "& value, uint8_t*& ptr, const uint32_t packetSize)";
-                file << "\n\t{\n";
-                file << R"(
-        if (ptr + packetSize <= ptr + sizeof(value))
+                file << "\tvoid readFromPacket(" << returnType.m_fullType << "& value, uint8_t*& ptr, const uint32_t packetSize)\n";
+                file << "\t{\n\t\t";
+                file << R"(if (ptr + packetSize < ptr + sizeof(value))
         {
             throw std::runtime_error("Buffer too small");
         }
 
         std::memcpy(&value, ptr, sizeof(value));
-        ptr += sizeof(value);)";
-            }
-            file << "\n\t}\n\n";
-            writtenTypes.emplace_back(returnType.type);
-        }
-    }
-}
-
-void generateWriteClient(std::ofstream& file, const std::vector<RPCFunction>& rpcFunctions)
-{
-    file << '\t';
-    file << R"(void write(const uint16_t& value, char** ptr)
-    {
-        std::memcpy(*ptr, &value, sizeof(value));
-        *ptr += sizeof(value);
-    }
-
-    void write(const uint64_t& value, char** ptr)
-    {
-        std::memcpy(*ptr, &value, sizeof(value));
-        *ptr += sizeof(value);
+        ptr += sizeof(value);
     })";
-
-    file << "\n\n";
-    std::vector<std::string> writtenTypes;
-    for(const auto& rpcFunction : rpcFunctions)
-    {
-        for(const auto& argType : rpcFunction.argTypes)
-        {
-            if(std::find(writtenTypes.begin(), writtenTypes.end(), argType.type) != writtenTypes.end())
-            {
-                continue;
             }
-
-            file << '\t';
-            if (argType.type == "string" || argType.isVector)
-            {
-                file << "void write(const std::" << argType.type << "& data, char** ptr)\n\t";
-                file << R"({
-        uint16_t length = data.size();
-
-        std::memcpy(*ptr, &length, sizeof(length));
-        *ptr += sizeof(length);
-
-        std::memcpy(*ptr, &data[0], length);
-        *ptr += length;)";
-            }
-            else
-            {
-                file << "void write(const " << argType.type << "& value, char** ptr)\n\t";
-                file << R"({
-        std::memcpy(*ptr, &value, sizeof(value));
-        *ptr += sizeof(value);)";
-            }
-            file << "\n\t}\n\n";
-
-            writtenTypes.emplace_back(argType.type);
+            file << "\n\n";
+            writtenTypes.emplace_back(returnType.m_fullType);
         }
     }
 }
 
 void generatePrivate(std::ofstream& file, const std::vector<RPCFunction>& rpcFunctions)
 {
-    file << "private:\n\n";
+    file << "private:\n";
 
     generateReadFromPacketClient(file, rpcFunctions);
-    generateWriteClient(file, rpcFunctions);
+
+    startGeneratingWrite(file);
+    std::vector<std::string> writtenTypes;
+    for(const auto& rpcFunction : rpcFunctions)
+    {
+        generateWrite(file, rpcFunction.m_argTypes, writtenTypes);
+    }
 
     file << "};";
 }
@@ -1259,6 +1263,8 @@ int main() {
         rpc (double result, string error) plus( double arg1, double arg2 )
         rpc (double result) minus( double arg1, double arg2 )
         rpc (double result) plus( vector<double> args )
+        rpc (vector<int> numbers, string greeting) getNumbers(int n)
+        rpc (uint64 sum) sum( vector<uint32> numbers)
     )";
 
     std::vector<RPCFunction> rpcFunctions = parseRPCDefinitions(input);
